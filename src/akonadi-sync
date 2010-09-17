@@ -20,25 +20,5 @@
       <ObjType>event</ObjType>
       <Url>default</Url>
     </Resource>
-    <Resource>
-      <Enabled>1</Enabled>
-      <Formats>
-        <Format>
-          <Name>vtodo20</Name>
-        </Format>
-      </Formats>
-      <ObjType>todo</ObjType>
-      <Url>default</Url>
-    </Resource>
-    <Resource>
-      <Enabled>1</Enabled>
-      <Formats>
-        <Format>
-          <Name>vjournal</Name>
-        </Format>
-      </Formats>
-      <ObjType>note</ObjType>
-      <Url>default</Url>
-    </Resource>
   </Resources>
 </config>
