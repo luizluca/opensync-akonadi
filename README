@@ -1,0 +1,29 @@
+OpenSync Framework
+==================
+
+OpenSync is a plugin-based application that basically provides a framework
+for syncing groups which can have two or more members. 
+
+This is the Akonadi (KDE 4.x) PIM synchronisation framework
+
+Requirements
+============
+- libopensync1 (v.0.40)
+
+
+Installation
+============
+export PKG_CONFIG_PATH=/opt/custom/opensync/lib/pkgconfig
+
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$prefix /path/to/opensync/source/
+make
+make install
+
+Links
+=====
+
+[1] http://www.opensync.org/wiki/download 
+[2] http://cryptomilch.de/~dgollub/talks/OpenSync_FOSDEM_2007.pdf
+
