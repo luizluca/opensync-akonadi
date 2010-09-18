@@ -10,15 +10,5 @@
      </Formats>
      <ObjType>contact</ObjType>
     </Resource>
-    <Resource>
-      <Enabled>1</Enabled>
-      <Formats>
-        <Format>
-          <Name>vevent20</Name>
-        </Format>
-      </Formats>
-      <ObjType>event</ObjType>
-      <Url>default</Url>
-    </Resource>
   </Resources>
 </config>

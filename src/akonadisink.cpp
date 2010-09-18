@@ -34,7 +34,7 @@ AkonadiSink::~AkonadiSink()
 
 bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncError ** error)
 {
-  Q_ASSERT( plugin );
+//   Q_ASSERT( plugin );
   kDebug();
   OSyncObjTypeSink *sink = osync_objtype_main_sink_new( error );
   osync_plugin_info_set_main_sink( info, sink );

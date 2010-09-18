@@ -1,4 +1,5 @@
 /*
+    Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
     Copyright (c) 2008 Volker Krause <vkrause@kde.org>
 
     This library is free software; you can redistribute it and/or modify it
@@ -26,6 +27,7 @@
 #include <akonadi/mimetypechecker.h>
 
 #include <kabc/addressee.h>
+// #include <akonadi/collectionfilterproxymodel.h>
 
 #include <KComponentData>
 #include <KDebug>
@@ -75,7 +77,7 @@ extern "C"
             OSyncObjTypeSink *sink = (OSyncObjTypeSink*) s->data;
             QString sinkName( osync_objtype_sink_get_name( sink ) );
             kDebug() << "###" << sinkName;
-            osync_trace(TRACE_INTERNAL, " EKO %s", osync_objtype_sink_get_name( sink ));
+            osync_trace(TRACE_INTERNAL, "  %s", osync_objtype_sink_get_name( sink ));
 
             DataSink *ds = NULL;
             if ( sinkName == "event" )
@@ -93,18 +95,18 @@ extern "C"
             if ( !ds->initialize( plugin, info, sink, error ) ) {
                 delete ds;
                 delete mainSink;
-                osync_trace(TRACE_EXIT_ERROR, "EKO %s: NULL", __func__);
+                osync_trace(TRACE_EXIT_ERROR, " %s: NULL", __func__);
                 return 0;
             }
         }
-        osync_trace(TRACE_EXIT, "EKO %s: %p", __func__, mainSink);
+        osync_trace(TRACE_EXIT, " %s: %p", __func__, mainSink);
         return mainSink;
 
     }
 
     static osync_bool akonadi_discover(OSyncPluginInfo *info, void *userdata, OSyncError **error )
     {
-        osync_trace(TRACE_ENTRY, "EKO %s(%p, %p, %p)", __func__, userdata, info, error);
+        osync_trace(TRACE_ENTRY, " %s(%p, %p, %p)", __func__, userdata, info, error);
         kDebug();
 
         if ( !Akonadi::Control::start() )
@@ -118,70 +120,57 @@ extern "C"
 
         Akonadi::Collection::List cols = job->collections();
         kDebug() << "found" << cols.count() << "collections";
-        osync_trace(TRACE_INTERNAL, "EKO objs# %i", cols.count());
 
+        foreach ( const Akonadi::Collection &col, cols ) {
+            kDebug() << "available resource for" << col.name() << col.contentMimeTypes();
+        }
+
+//         Akonadi::MimeTypeChecker todoMimeTypeChecker;
+//         todoMimeTypeChecker.addWantedMimeType( QLatin1String( "text/??todo" ) );
+//         Akonadi::MimeTypeChecker journalMimeTypeChecker;
+//         journalMimeTypeChecker.addWantedMimeType( QLatin1String( "text/??notes" ) );
+        //   http://www.opensync.org/wiki/devel/pluginPortingGuide-0.40
+// FIXME removing this will make configuration obsolate and we can use the iteration
+//	over the akonadi items to build our configuration this however is helping
         OSyncPluginConfig *config = osync_plugin_info_get_config( info );
-
         Akonadi::MimeTypeChecker contactMimeChecker;
         contactMimeChecker.addWantedMimeType( KABC::Addressee::mimeType() );
-
-        Akonadi::MimeTypeChecker eventMimeTypeChecker;
-        eventMimeTypeChecker.addWantedMimeType( QLatin1String( "text/calendar" ) );
-//   http://www.opensync.org/wiki/devel/pluginPortingGuide-0.40
-// FIXME removing this will make configuration obsolate and we can use the iteration
-//	over the akonadi items to build our configuration
-        OSyncList *s = NULL, *list = osync_plugin_info_get_objtype_sinks(info);
-        for ( s = list; s; s = s->next ) {
-            OSyncObjTypeSink *sink = (OSyncObjTypeSink*) s->data;
-//try to replace the resources with akonai own data
-            foreach ( const Akonadi::Collection &col, cols ) {
-                kDebug() << "creating resource for" << col.name() << col.contentMimeTypes();
-                QString formatName;
-                OSyncPluginResource *res = 0;
-                if ( eventMimeTypeChecker.isWantedCollection( col ) ) {
-                    res  = osync_plugin_config_find_active_resource(config, "event");
-                    formatName = "vevent20"; //TODO get the Akonadi object format here
-                }
-                else if ( contactMimeChecker.isWantedCollection( col ) ) {
-                    res  = osync_plugin_config_find_active_resource(config, "contact");
-                    formatName = "vcard30";
-                }
-                else
-                    continue;
-
-                if (! res ) {
-                    res = osync_plugin_resource_new( error );
-                    osync_plugin_config_add_resource( config, res );
-                    osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( formatName.toLatin1(), error ) );
-                }
-// find the object fomat
-//                 OSyncObjFormat *format = 0;
-//                 OSyncFormatEnv *formatenv = osync_plugin_info_get_format_env( info );
-//
-//                 OSyncList *objformatsinks = osync_plugin_resource_get_objformat_sinks(res);
-//                 for (OSyncList *r = objformatsinks;r;r = r->next) {
-//                     OSyncObjFormatSink *objformatsink = (OSyncObjFormatSink *) r->data;
-//                     if (!strcmp(formatName.toLatin1(), osync_objformat_sink_get_objformat(objformatsink))) {
-//                         format = osync_format_env_find_objformat( formatenv, formatName.toLatin1() );
-//                         osync_plugin_resource_set_preferred_format( res, formatName );
-//                         break;
-//                     }
-//                 }
-                osync_plugin_resource_set_name( res, col.name().toLatin1() ); // TODO: full path instead of the name
-// 		if ( !strcmp(col.url().url().toLatin1(),osync_plugin_resource_get_url(res) ) )
-                osync_plugin_resource_set_url( res, col.url().url().toLatin1() );
-                osync_plugin_resource_set_objtype( res, osync_objtype_sink_get_name( sink ) );
-                // NOTE here we can overwrite some settings on the fly
-// 		osync_plugin_resource_set_mime(res,  xxxx);
-// 	    osync_plugin_resource_set_preferred_format();
-
-                if ( ! osync_plugin_resource_is_enabled(res) )
-                    osync_plugin_resource_enable( res, TRUE );
-                osync_objtype_sink_enable_hashtable(sink, TRUE);
+        Akonadi::MimeTypeChecker calendarMimeTypeChecker;
+        calendarMimeTypeChecker.addWantedMimeType( QLatin1String( "text/calendar" ) );
+        foreach ( const Akonadi::Collection &col, cols ) {
+            if ( col.contentMimeTypes().isEmpty() )
+                continue;
+            OSyncPluginResource *res0 = 0;
+            OSyncObjTypeSink *sink = osync_objtype_sink_new(col.name().toLatin1(), error);
+            if (! sink ) //TODO errors?
+                continue;
+// //                 QString formatName;
+            if ( calendarMimeTypeChecker.isWantedCollection( col ) ) {
+                kDebug() << "using resource for calendar" << col.name() << col.contentMimeTypes();
+//                 formatName = "vevent20"; //TODO get the Akonadi object format here?
+                res0 = osync_plugin_config_find_active_resource(config,"event");
+                osync_plugin_resource_set_objtype( res0,"event" );
             }
+            else if ( contactMimeChecker.isWantedCollection( col ) ) {
+                kDebug() << "using resource contact for" << col.name() << col.contentMimeTypes();
+                res0 = osync_plugin_config_find_active_resource(config,"contact");
+                osync_plugin_resource_set_objtype( res0, "contact" );
+                osync_plugin_resource_set_url( res0, col.url().url().toLatin1() );
+            } else {
+                kDebug() << "creating resource for" << col.name() << col.contentMimeTypes();
+                res0 = osync_plugin_resource_new( error );
+                osync_plugin_resource_set_objtype( res0, osync_objtype_sink_get_name( sink ) );
+                osync_plugin_resource_add_objformat_sink( res0, osync_objformat_sink_new( "", error ) );
+                osync_plugin_config_add_resource( config, res0 );
+            }
+            osync_plugin_resource_set_name( res0, col.name().toUtf8() ); // TODO: full path instead of the name
+            osync_plugin_resource_set_url( res0, col.url().url().toLatin1() );
+            osync_plugin_resource_enable( res0, TRUE );
+            osync_objtype_sink_set_enabled( sink, TRUE );
             osync_objtype_sink_set_available( sink, TRUE );
+            osync_plugin_info_add_objtype( info, sink );
         }
-        osync_list_free(list);
+
         // set information about the peer (KDE itself)
         {
             OSyncVersion *version = osync_version_new(error);
@@ -221,7 +210,7 @@ extern "C"
         osync_plugin_set_name(plugin, "akonadi-sync");
         osync_plugin_set_longname(plugin, "Akonadi");
         osync_plugin_set_description(plugin, "Plugin to synchronize with Akonadi");
-//   osync_plugin_set_config_type(plugin, OSYNC_PLUGIN_NO_CONFIGURATION);
+        osync_plugin_set_config_type(plugin, OSYNC_PLUGIN_OPTIONAL_CONFIGURATION);
         osync_plugin_set_initialize(plugin, akonadi_initialize);
         osync_plugin_set_finalize(plugin, akonadi_finalize);
         osync_plugin_set_discover(plugin, akonadi_discover);
