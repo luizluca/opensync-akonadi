@@ -36,8 +36,14 @@ bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSync
 {
   kDebug();
   OSyncObjTypeSink *sink = osync_objtype_main_sink_new( error );
+          if (!sink) {
+	    
+	kDebug() << "No sink ";
+	return false;
+	  }
+//   wrapSink( sink );
   osync_plugin_info_set_main_sink( info, sink );
-  wrapSink( sink );
+//   osync_objtype_sink_unref(sink);
   return true;
 }
 
@@ -51,9 +57,10 @@ void AkonadiSink::connect()
     osync_trace(TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, "Could not start Akonadi.");
     return;
   }
-
+  connect();
   success();
   osync_trace(TRACE_EXIT, "%s", __PRETTY_FUNCTION__);
 }
+
 
 #include "akonadisink.moc"

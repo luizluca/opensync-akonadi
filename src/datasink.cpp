@@ -59,10 +59,10 @@ DataSink::DataSink( int type ) :
   kDebug() << "Create obj:" << type;
     m_type = type;
     
-    m_hasEvent = true ? ( type = DataSink::Calendars ) : false;
-    m_hasContact = true ? ( type = DataSink::Contacts ) : false;
-    m_hasNote = true ? ( type = DataSink::Notes ) : false;
-    m_hasTodo = true ? ( type = DataSink::Todos ) : false;
+    m_hasEvent = ( type == DataSink::Calendars ) ? true : false;
+    m_hasContact = ( type == DataSink::Contacts ) ? true : false;
+    m_hasNote = ( type == DataSink::Notes ) ? true : false;
+    m_hasTodo = ( type == DataSink::Todos ) ? true : false;
 
 }
 
@@ -72,8 +72,11 @@ DataSink::~DataSink() {
 
 bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObjTypeSink *sink, OSyncError ** error)
 {
+//     Q_UNUSED( plugin );
+//     Q_ASSERT( info );
+//     Q_ASSERT( sink );
   kDebug() << "initializing" << osync_objtype_sink_get_name(sink);
-    Q_UNUSED(plugin);
+//     Q_UNUSED(plugin);
     bool enabled = osync_objtype_sink_is_enabled( sink );
     if ( ! enabled ) {
         kDebug() << "sink is not enabled..";
@@ -89,15 +92,15 @@ bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObj
 
     wrapSink( sink );
     
-kDebug() << "Sink wrapped" << osync_objtype_sink_get_name(sink);
+kDebug() << "Sink wrapped: " << osync_objtype_sink_get_name(sink);
 //      osync_objtype_sink_set_userdata(sink, env);
 
-     osync_objtype_sink_enable_hashtable(sink, TRUE);
+/*     osync_objtype_sink_enable_hashtable(sink, TRUE);
      m_hashtable = osync_objtype_sink_get_hashtable(sink);
     if ( ! m_hashtable ) {
         kDebug() << "No hashtable for sync";
 //         return false;
-    }     
+    }    */ 
     return true;
 }
 

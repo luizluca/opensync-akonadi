@@ -36,6 +36,7 @@ class AkonadiSink : public SinkBase
     bool initialize( OSyncPlugin *plugin, OSyncPluginInfo *info, OSyncError **error );
 
     void connect();
+
 };
 
 #endif

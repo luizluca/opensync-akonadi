@@ -92,7 +92,7 @@ extern "C"
                 ds = new DataSink( DataSink::Notes );
             else
                 continue;
-
+	kDebug() << "Info:"<< osync_plugin_info_get_groupname(info);
             if ( !ds->initialize( plugin, info, sink, error ) ) {
                 delete ds;
                 delete mainSink;
