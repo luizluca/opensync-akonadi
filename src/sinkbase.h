@@ -69,6 +69,7 @@ class SinkBase : public QObject
     void warning( OSyncError *error ) const;
     void wrapSink( OSyncObjTypeSink* sink );
     OSyncObjTypeSink* sink() const { return mSink; }
+    bool m_hasContact, m_hasEvent, m_hasTodo, m_hasNote;
 
   private:
 //     OSyncObjTypeSinkFunctions mWrapedFunctions;
@@ -78,7 +79,6 @@ class SinkBase : public QObject
 //     what do we have and what can we do
     bool m_canConnect, m_canDisconnect, m_canSyncDone, m_canCommit, m_canGetChanges;
     bool m_canWrite, m_canRead, m_canCommitAll, m_canCommitRead, m_canBatchCommit;
-    bool m_hasContact, m_hasEvent, m_hasTodo, m_hasNote;
     osync_bool m_SlowSync;
 };
 
