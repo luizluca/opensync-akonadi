@@ -1,6 +1,6 @@
 /*
-    Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
     Copyright (c) 2008 Volker Krause <vkrause@kde.org>
+    Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
 
     This library is free software; you can redistribute it and/or modify it
     under the terms of the GNU Library General Public License as published by

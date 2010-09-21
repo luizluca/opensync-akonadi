@@ -1,4 +1,9 @@
 
+
+#
+#    Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
+#    $Id: deloptes$
+
 #INCLUDE_DIRECTORIES( ${OPENSYNC_INCLUDE_DIRS} ${GLIB2_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src )
 # 
 

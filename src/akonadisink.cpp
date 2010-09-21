@@ -1,5 +1,6 @@
 /*
     Copyright (c) 2008 Volker Krause <vkrause@kde.org>
+    Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
 
     This library is free software; you can redistribute it and/or modify it
     under the terms of the GNU Library General Public License as published by
@@ -41,8 +42,8 @@ bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSync
 	kDebug() << "No sink ";
 	return false;
 	  }
-//   wrapSink( sink );
   osync_plugin_info_set_main_sink( info, sink );
+  wrapSink( sink );
 //   osync_objtype_sink_unref(sink);
   return true;
 }
@@ -57,7 +58,6 @@ void AkonadiSink::connect()
     osync_trace(TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, "Could not start Akonadi.");
     return;
   }
-  connect();
   success();
   osync_trace(TRACE_EXIT, "%s", __PRETTY_FUNCTION__);
 }

@@ -1,5 +1,8 @@
 /*
     Copyright (c) 2008 Volker Krause <vkrause@kde.org>
+    Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
+    
+    $Id$
 
     This library is free software; you can redistribute it and/or modify it
     under the terms of the GNU Library General Public License as published by
@@ -172,21 +175,21 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
     Q_ASSERT( mSink == 0 );
     mSink = sink;
 
-    if ( m_canConnect )
+    if ( ! m_canConnect )
         osync_objtype_sink_set_connect_func(sink, connect_wrapper);
-    if ( m_canDisconnect )
+    if ( ! m_canDisconnect )
         osync_objtype_sink_set_disconnect_func(sink, disconnect_wrapper);
 
-    if ( m_canGetChanges && m_hasContact )
+    if ( ! m_canGetChanges && m_hasContact )
         osync_objtype_sink_set_get_changes_func(sink, contact_get_changes_wrapper);
-    if (  m_canGetChanges && m_hasEvent )
+    if (  ! m_canGetChanges && m_hasEvent )
         osync_objtype_sink_set_get_changes_func(sink, event_get_changes_wrapper);
-    if (  m_canGetChanges && m_hasTodo )
+    if (  ! m_canGetChanges && m_hasTodo )
         osync_objtype_sink_set_get_changes_func(sink, todo_get_changes_wrapper);
-    if (  m_canGetChanges && m_hasNote )
+    if (  ! m_canGetChanges && m_hasNote )
         osync_objtype_sink_set_get_changes_func(sink, journal_get_changes_wrapper);
 
-    if ( m_canCommit )
+    if ( ! m_canCommit )
         osync_objtype_sink_set_commit_func(sink, commit_wrapper);
 //   TODO: check if relevant for akonadi
 //   if ( m_canWrite )
@@ -197,7 +200,7 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
 //     osync_objtype_sink_set_commit_func(sink, 0);
 //   if ( m_canBatchCommit )
 //     osync_objtype_sink_set_commit_func(sink, 0);
-    if ( m_canSyncDone )
+    if ( ! m_canSyncDone )
         osync_objtype_sink_set_sync_done_func(sink, sync_done_wrapper);
 
 }
