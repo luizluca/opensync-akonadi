@@ -24,6 +24,10 @@
 
 #include <KDebug>
 
+#include <opensync/opensync-plugin.h>
+#include <opensync/opensync-data.h>
+#include <opensync/opensync-format.h>
+
 AkonadiSink::AkonadiSink() :
     SinkBase( Connect )
 {
@@ -45,6 +49,11 @@ bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSync
   osync_plugin_info_set_main_sink( info, sink );
   wrapSink( sink );
 //   osync_objtype_sink_unref(sink);
+//       OSyncHashTable * hashtable = osync_objtype_sink_get_hashtable(sink);
+//       if( hashtable )
+// 	osync_objtype_sink_enable_hashtable(sink, TRUE);
+//       if( ! hashtable ) 
+//         kDebug() << "No hashtable for sync";
   return true;
 }
 

@@ -24,16 +24,10 @@
 // #include <glib/ghash.h>
 
 #include "datasink.h"
-// #include "plugin/opensync_plugin_info_internals.h"
-// #include "plugin/opensync_objtype_sink_internals.h"
-// #include "helper/opensync_hashtable_internals.h"
 
-#include <opensync/opensync.h>
-#include <opensync/opensync-helper.h>
-#include <opensync/opensync-plugin.h>
-// #include <opensync/helper/opensync_hashtable.h>
-// #include <opensync/helper/opensync_sink_state_db.h>
-// #include <opensync/helper/opensync_hashtable.h>
+// #include <opensync/opensync.h>
+// #include <opensync/opensync-helper.h>
+// #include <opensync/opensync-plugin.h>
 
 // calendar includes
 #include <kcal/incidence.h>
@@ -75,35 +69,42 @@ DataSink::~DataSink() {
 
 bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObjTypeSink *sink, OSyncError ** error)
 {
-//     Q_UNUSED( plugin );
-//     Q_ASSERT( info );
-//     Q_ASSERT( sink );
   kDebug() << "initializing" << osync_objtype_sink_get_name(sink);
-//     Q_UNUSED(plugin);
-    bool enabled = osync_objtype_sink_is_enabled( sink );
-    if ( ! enabled ) {
-        kDebug() << "sink is not enabled..";
-        return false;
-    }
+  Q_UNUSED( plugin );
+  Q_UNUSED( info );
+  Q_UNUSED( error );
+
+  bool enabled = osync_objtype_sink_is_enabled( sink );
+  if( ! enabled ) {
+    kDebug() << "sink is not enabled..";
+    return false;
+  }
 
     OSyncPluginConfig *config = osync_plugin_info_get_config(info);
-
     if (!config) {
         osync_error_set(error, OSYNC_ERROR_GENERIC, "Unable to get config.");
         return false;
     }
-
-    wrapSink( sink );
     
-kDebug() << "Sink wrapped: " << osync_objtype_sink_get_name(sink);
-//      osync_objtype_sink_set_userdata(sink, env);
+    wrapSink( sink );
+    osync_objtype_sink_enable_hashtable(sink , TRUE);
+    m_hashtable = osync_objtype_sink_get_hashtable(sink);
+    
+    if ( ! m_hashtable )
+      kDebug() << ">> NO hashtable for objtype:" << osync_objtype_sink_get_name(sink);
+    
+// kDebug() << "Sink wrapped: " << osync_objtype_sink_get_name(sink);
 
-/*     osync_objtype_sink_enable_hashtable(sink, TRUE);
-     m_hashtable = osync_objtype_sink_get_hashtable(sink);
-    if ( ! m_hashtable ) {
-        kDebug() << "No hashtable for sync";
-//         return false;
-    }    */ 
+// TODO
+//       m_hashtable = osync_objtype_sink_get_hashtable(sink);
+//       if( m_hashtable )
+// 	osync_objtype_sink_enable_hashtable(sink, TRUE);
+//       if( ! m_hashtable ) {
+//         kDebug() << "No hashtable for sync";
+//     osync_trace(TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print( error ) );
+//     return false;
+//   }
+
     return true;
 }
 
@@ -137,6 +138,7 @@ void DataSink::getChanges()
 // #if 1
     Collection col = collection();
     if ( !col.isValid() ) {
+        kDebug() << "No collection";
         osync_trace( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print( &oerror ) );
         return;
     }
@@ -158,7 +160,7 @@ void DataSink::getChanges()
 
     ItemFetchJob *job = new ItemFetchJob( col );
     job->fetchScope().fetchFullPayload();
-    osync_trace( TRACE_INTERNAL, "EKO fetchFullPayload" );
+    kDebug() << "Fetched FullPayload" ;
 
     QObject::connect( job, SIGNAL( itemsReceived( const Akonadi::Item::List & ) ), this, SLOT( slotItemsReceived( const Akonadi::Item::List & ) ) );
     QObject::connect( job, SIGNAL( result( KJob * ) ), this, SLOT( slotGetChangesFinished( KJob * ) ) );
@@ -393,10 +395,10 @@ bool DataSink::setPayload( Item *item, const QString &str )
         KABC::VCardConverter converter;
         KABC::Addressee vcard = converter.parseVCard( str.toLatin1() );
         kDebug() << vcard.uid() << vcard.name();
-
         item->setMimeType( KABC::Addressee::mimeType() );
-        // item->setPayload<KABC::Addressee>( str ); // FIXME
-        item->setPayloadFromData( str.toLatin1() ); // FIXME
+        //item->setPayload<KABC::Addressee>( vcard ); // FIXME
+        item->setPayloadFromData( vcard.toString().toLatin1() ); // FIXME
+        //item->setPayload<KABC::Addressee>( vcard.toString() ); // FIXME
         break;
     }
     case Notes: {
@@ -470,10 +472,12 @@ const Item DataSink::fetchItem( const QString& id )
 
 void DataSink::syncDone()
 {
-    kDebug();
+    kDebug() << "sync for sink member done";
+//         OSyncError *error = 0;
+//    osync_objtype_sink_save_hashtable( sink, &error );
 //    OSyncError *error = 0;
-//   osync_objtype_sink_sync_done( m_hashtable, &error );
-
+// OSyncObjTypeSink *sink =sink();
+//   osync_objtype_sink_save_hashtable( sink , &error );
     //TODO check for errors
     success();
 }
