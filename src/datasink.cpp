@@ -1,7 +1,7 @@
 /*
     Copyright (c) 2008 Volker Krause <vkrause@kde.org>
     Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
-    
+
     $Id$
 
     This library is free software; you can redistribute it and/or modify it
@@ -53,32 +53,27 @@ typedef boost::shared_ptr<KCal::Incidence> IncidencePtr;
 DataSink::DataSink( int type ) :
         SinkBase( GetChanges | Commit | SyncDone )
 {
-  kDebug() << "Create obj:" << type;
+    kDebug() << "Create obj:" << type;
     m_type = type;
-    
-    m_hasEvent = ( type == DataSink::Calendars ) ? true : false;
-    m_hasContact = ( type == DataSink::Contacts ) ? true : false;
-    m_hasNote = ( type == DataSink::Notes ) ? true : false;
-    m_hasTodo = ( type == DataSink::Todos ) ? true : false;
+
+//     m_isEvent = ( type == DataSink::Calendars ) ? true : false;
+//     m_isContact = ( type == DataSink::Contacts ) ? true : false;
+//     m_isNote = ( type == DataSink::Notes ) ? true : false;
+//     m_isTodo = ( type == DataSink::Todos ) ? true : false;
 
 }
 
 DataSink::~DataSink() {
-  kDebug() << "DataSink destructor called"; // TODO still needed
+    kDebug() << "DataSink destructor called"; // TODO still needed
 }
 
 bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObjTypeSink *sink, OSyncError ** error)
 {
-  kDebug() << "initializing" << osync_objtype_sink_get_name(sink);
-  Q_UNUSED( plugin );
-  Q_UNUSED( info );
-  Q_UNUSED( error );
-
-  bool enabled = osync_objtype_sink_is_enabled( sink );
-  if( ! enabled ) {
-    kDebug() << "sink is not enabled..";
-    return false;
-  }
+    kDebug() << "initializing" << osync_objtype_sink_get_name(sink);
+    kDebug() << "TYPE        " << m_type;
+    Q_UNUSED( plugin );
+    Q_UNUSED( info );
+    Q_UNUSED( error );
 
     OSyncPluginConfig *config = osync_plugin_info_get_config(info);
     if (!config) {
@@ -86,13 +81,12 @@ bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObj
         return false;
     }
     
-    wrapSink( sink );
-    osync_objtype_sink_enable_hashtable(sink , TRUE);
-    m_hashtable = osync_objtype_sink_get_hashtable(sink);
-    
-    if ( ! m_hashtable )
-      kDebug() << ">> NO hashtable for objtype:" << osync_objtype_sink_get_name(sink);
-    
+    bool enabled = osync_objtype_sink_is_enabled( sink );
+    if ( ! enabled ) {
+        kDebug() << "sink is not enabled..";
+        return false;
+    }
+
 // kDebug() << "Sink wrapped: " << osync_objtype_sink_get_name(sink);
 
 // TODO
@@ -105,6 +99,35 @@ bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObj
 //     return false;
 //   }
 
+    wrapSink( sink );
+    
+    OSyncPluginResource *resource = osync_plugin_config_find_active_resource(config, osync_objtype_sink_get_name(sink));
+    OSyncList *objfrmtList = osync_plugin_resource_get_objformat_sinks(resource);
+    
+    OSyncList *r;
+    bool hasObjFormat;
+         for(r = objfrmtList;r;r = r->next) {
+                 OSyncObjFormatSink *objformatsink = (OSyncObjFormatSink *) r->data;
+
+                 if(!strcmp("vcard30", osync_objformat_sink_get_objformat(objformatsink))) {
+                        hasObjFormat = true;
+			 kDebug() << "Has objformat vcard30";
+                         break;
+                 }
+         }
+
+         if (!hasObjFormat) {
+			 kDebug() << "No objformat vcard30";
+                 return false;
+         }
+    
+    osync_objtype_sink_set_userdata(sink, this);
+    osync_objtype_sink_enable_hashtable(sink , TRUE);
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink);
+
+    if ( ! hashtable )
+        kDebug() << ">> NO hashtable for objtype:" << osync_objtype_sink_get_name(sink);
+    
     return true;
 }
 
@@ -133,25 +156,23 @@ Akonadi::Collection DataSink::collection() const
 
 void DataSink::getChanges()
 {
+    kDebug() << " DataSink::getChanges() called";
     OSyncError *oerror = 0;
-    // ### broken in OpenSync, I don't get valid configuration here!
-// #if 1
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink());;
+
     Collection col = collection();
     if ( !col.isValid() ) {
         kDebug() << "No collection";
         osync_trace( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print( &oerror ) );
         return;
     }
-// #else
-//   Collection col( 409 );
-// #endif
 
 
 // FIXME
     if ( getSlowSink() ) {
         kDebug() << "we're in the middle of slow-syncing...";
         osync_trace( TRACE_INTERNAL, "EKO Got slow-sync, resetting hashtable" );
-        if ( ! osync_hashtable_slowsync( m_hashtable, &oerror ) ) {
+        if ( ! osync_hashtable_slowsync( hashtable, &oerror ) ) {
             warning( oerror );
             osync_trace( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print( &oerror ) );
             return;
@@ -170,6 +191,7 @@ void DataSink::getChanges()
         error( OSYNC_ERROR_IO_ERROR, job->errorText() );
         return;
     }
+    success();
 }
 
 void DataSink::slotItemsReceived( const Item::List &items )
@@ -187,6 +209,7 @@ void DataSink::reportChange( const Item& item )
     OSyncObjFormat *format = osync_format_env_find_objformat( formatenv, formatName().toLatin1() );
 
     OSyncError *error = 0;
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink());
 
     OSyncChange *change = osync_change_new( &error );
     if ( !change ) {
@@ -208,24 +231,24 @@ void DataSink::reportChange( const Item& item )
 
     osync_change_set_data( change, odata );
 
-    kDebug() << item.id() << "DATA:" << osync_data_get_printable( odata , &error) << "\n" << "ORIG:" << item.payloadData().data();
+    kDebug() << item.id() << "\n" << "DATA:" << osync_data_get_printable( odata , &error) << "\n" << "ORIG:" << item.payloadData().data();
 
     osync_data_unref( odata );
     osync_change_set_hash( change, QString::number( item.revision() ).toLatin1() );
-    OSyncChangeType changeType = osync_hashtable_get_changetype( m_hashtable, change );
+    OSyncChangeType changeType = osync_hashtable_get_changetype( hashtable, change );
     osync_change_set_changetype( change, changeType );
 
 
-    /*
+    /* */
     kDebug() << "changeid:" << osync_change_get_uid( change )
                << "itemid:" << item.id()
                << "revision:" << item.revision()
                << "changetype:" << changeType
-               << "hash:" << osync_hashtable_get_hash( m_hashtable, osync_change_get_uid( change ) )
+               << "hash:" << osync_hashtable_get_hash( hashtable, osync_change_get_uid( change ) )
                << "objtype:" << osync_change_get_objtype( change )
                << "objform:" << osync_objformat_get_name( osync_change_get_objformat( change ) )
                << "sinkname:" << osync_objtype_sink_get_name( sink() );
-    */
+    /* */
 
     if ( changeType != OSYNC_CHANGE_TYPE_UNMODIFIED )
         osync_context_report_change( context(), change );
@@ -242,7 +265,8 @@ void DataSink::slotGetChangesFinished( KJob * )
     // after the items have been processed, see what's been deleted and send them to opensync
     OSyncError *error = 0;
 //   FIXME:
-    OSyncList *u, *uids = osync_hashtable_get_deleted( m_hashtable );
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink());
+    OSyncList *u, *uids = osync_hashtable_get_deleted( hashtable );
 //
     for ( u = uids; u; u = u->next) {
         QString uid( (char *)u->data );
@@ -268,7 +292,7 @@ void DataSink::slotGetChangesFinished( KJob * )
         osync_data_set_objtype( data, osync_objtype_sink_get_name( sink() ) );
         osync_change_set_data( change, data );
 
-        osync_hashtable_update_change( m_hashtable, change );
+        osync_hashtable_update_change( hashtable, change );
 
         osync_change_unref( change );
     }
@@ -283,6 +307,7 @@ void DataSink::commit(OSyncChange *change)
     kDebug() << "change uid:" << osync_change_get_uid( change );
     kDebug() << "objtype:" << osync_change_get_objtype( change );
     kDebug() << "objform:" << osync_objformat_get_name (osync_change_get_objformat( change ) );
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink());
 
     switch ( osync_change_get_changetype( change ) ) {
     case OSYNC_CHANGE_TYPE_ADDED: {
@@ -317,7 +342,7 @@ void DataSink::commit(OSyncChange *change)
         kDebug() << "got invalid changetype?";
     }
 
-    osync_hashtable_update_change( m_hashtable, change );
+    osync_hashtable_update_change( hashtable, change );
     success();
 }
 
@@ -473,11 +498,12 @@ const Item DataSink::fetchItem( const QString& id )
 void DataSink::syncDone()
 {
     kDebug() << "sync for sink member done";
-//         OSyncError *error = 0;
+        OSyncError *error = 0;
+// 	OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink());
 //    osync_objtype_sink_save_hashtable( sink, &error );
 //    OSyncError *error = 0;
 // OSyncObjTypeSink *sink =sink();
-//   osync_objtype_sink_save_hashtable( sink , &error );
+  osync_objtype_sink_save_hashtable( sink() , &error );
     //TODO check for errors
     success();
 }

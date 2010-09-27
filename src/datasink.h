@@ -99,7 +99,7 @@ class DataSink : public SinkBase
     bool setPayload( Item *item, const QString &str );
 
   private:
-    OSyncHashTable *m_hashtable;
+//     OSyncHashTable *m_hashtable;
     int m_type;
 };
 

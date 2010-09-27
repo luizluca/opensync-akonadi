@@ -37,10 +37,12 @@ extern "C"
     static void connect_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, void *userdata )
     {
         WRAP( connect() )
+        osync_context_report_success(ctx);
     }
 
     static void disconnect_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, void *userdata) {
         WRAP( disconnect() )
+//         osync_context_report_success(ctx);
     }
 
     static void get_changes_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, osync_bool slow_sync, void *userdata) {
@@ -48,6 +50,7 @@ extern "C"
         WRAP ( getChanges() )
         if ( slow_sync )
             sb->setSlowSink(slow_sync);
+//         osync_context_report_success(ctx);
     }
 
     static void sync_done_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, void *userdata) {
@@ -64,7 +67,8 @@ extern "C"
 SinkBase::SinkBase( int features ) :
         mContext( 0 ),
         mSink( 0 ),
-        mPluginInfo( 0 )
+        mPluginInfo( 0 ),
+        m_SlowSync( false )
 {
 
     m_canConnect = ( features & Connect ) ? true : false;
@@ -88,8 +92,6 @@ SinkBase::~SinkBase()
 void SinkBase::connect()
 {
     Q_ASSERT( false );
-    // Success!
-    osync_context_report_success(mContext);
 }
 
 void SinkBase::setSlowSink(osync_bool s)
@@ -155,15 +157,20 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
     Q_ASSERT( sink );
     Q_ASSERT( mSink == 0 );
     mSink = sink;
+    
+        
+    kDebug() << ">> m_canConnect:" << m_canConnect;
+    kDebug() << ">> m_canGetChanges:" << m_canGetChanges;
+//     kDebug() << ">> NO hashtable for objtype:" << m_canConnect;
 
-    if ( ! m_canConnect && (  m_hasEvent || m_hasContact) )
+    if ( ! m_canConnect )
         osync_objtype_sink_set_connect_func(sink, connect_wrapper);
-    if ( ! m_canDisconnect && (  m_hasEvent || m_hasContact) )
+    if ( ! m_canDisconnect  || m_isContact || m_isEvent )
         osync_objtype_sink_set_disconnect_func(sink, disconnect_wrapper);
-    if ( ! m_canGetChanges && (  m_hasEvent || m_hasContact) )
+    if ( ! m_canGetChanges || m_isContact || m_isEvent )
         osync_objtype_sink_set_get_changes_func(sink, get_changes_wrapper);
 
-    if ( ! m_canCommit && (  m_hasEvent || m_hasContact) )
+    if ( ! m_canCommit  || m_isContact || m_isEvent )
         osync_objtype_sink_set_commit_func(sink, commit_wrapper);
 //   TODO: check if relevant for akonadi
 //   if ( m_canWrite )
@@ -174,7 +181,7 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
 //     osync_objtype_sink_set_commit_func(sink, 0);
 //   if ( m_canBatchCommit )
 //     osync_objtype_sink_set_commit_func(sink, 0);
-    if ( ! m_canSyncDone && (  m_hasEvent || m_hasContact) )
+    if ( ! m_canSyncDone  || m_isContact || m_isEvent)
         osync_objtype_sink_set_sync_done_func(sink, sync_done_wrapper);
 
 }
