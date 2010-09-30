@@ -39,7 +39,12 @@ AkonadiSink::~AkonadiSink()
 
 bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncError ** error)
 {
+    Q_UNUSED( plugin );
   kDebug();
+  
+  if ( !Akonadi::Control::start() )
+            return false;
+  
   OSyncObjTypeSink *sink = osync_objtype_main_sink_new( error );
           if (!sink) {
 	    
@@ -48,12 +53,7 @@ bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSync
 	  }
   osync_plugin_info_set_main_sink( info, sink );
   wrapSink( sink );
-//   osync_objtype_sink_unref(sink);
-//       OSyncHashTable * hashtable = osync_objtype_sink_get_hashtable(sink);
-//       if( hashtable )
-// 	osync_objtype_sink_enable_hashtable(sink, TRUE);
-//       if( ! hashtable ) 
-//         kDebug() << "No hashtable for sync";
+
   return true;
 }
 

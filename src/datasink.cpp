@@ -29,6 +29,9 @@
 // #include <opensync/opensync-helper.h>
 // #include <opensync/opensync-plugin.h>
 
+#include <akonadi/collectionfetchjob.h>
+#include <akonadi/collectionfetchscope.h>
+
 // calendar includes
 #include <kcal/incidence.h>
 #include <kcal/icalformat.h>
@@ -90,10 +93,10 @@ bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObj
 // kDebug() << "Sink wrapped: " << osync_objtype_sink_get_name(sink);
 
 // TODO
-//       m_hashtable = osync_objtype_sink_get_hashtable(sink);
-//       if( m_hashtable )
+//       OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink);
+//       if( hashtable )
 // 	osync_objtype_sink_enable_hashtable(sink, TRUE);
-//       if( ! m_hashtable ) {
+//       if( ! hashtable ) {
 //         kDebug() << "No hashtable for sync";
 //     osync_trace(TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print( error ) );
 //     return false;
@@ -146,6 +149,7 @@ Akonadi::Collection DataSink::collection() const
     }
 
     const KUrl url = KUrl( osync_plugin_resource_get_url( res ) );
+    // TODO osync_plugin_resource_get_mime() ;
     if ( url.isEmpty() ) {
         error( OSYNC_ERROR_MISCONFIGURATION, i18n("Url for object type \"%1\" is not configured.", objtype ) );
         return Collection();
@@ -158,15 +162,14 @@ void DataSink::getChanges()
 {
     kDebug() << " DataSink::getChanges() called";
     OSyncError *oerror = 0;
-    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink());;
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink());
 
-    Collection col = collection();
+    Collection col = collection(); // osync_objtype_sink_get_name(sink())
     if ( !col.isValid() ) {
         kDebug() << "No collection";
         osync_trace( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print( &oerror ) );
         return;
     }
-
 
 // FIXME
     if ( getSlowSink() ) {
@@ -175,6 +178,7 @@ void DataSink::getChanges()
         if ( ! osync_hashtable_slowsync( hashtable, &oerror ) ) {
             warning( oerror );
             osync_trace( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print( &oerror ) );
+	    kDebug() << "Will abort >>> whatever - because of slowsync";
             return;
         }
     }
@@ -426,12 +430,33 @@ bool DataSink::setPayload( Item *item, const QString &str )
         //item->setPayload<KABC::Addressee>( vcard.toString() ); // FIXME
         break;
     }
-    case Notes: {
-        kDebug() << "notes";
+    case Todos: {
+        KCal::ICalFormat format;
+        KCal::Incidence *todoEntry = format.fromString( str );
+
+        item->setMimeType( "application/x-vnd.akonadi.calendar.todo" );
+        item->setPayload<IncidencePtr>( IncidencePtr( todoEntry->clone() ) );
+
         break;
     }
-    case Todos: {
-        kDebug() << "todos";
+    case Notes: {
+        kDebug() << "notes";
+        KCal::ICalFormat format;
+        KCal::Incidence *noteEntry = format.fromString( str );
+
+        item->setMimeType( "application/x-vnd.kde.notes" );
+        item->setPayload<IncidencePtr>( IncidencePtr( noteEntry->clone() ) );
+
+        break;
+    }
+    case Journals: {
+        kDebug() << "journals";
+        KCal::ICalFormat format;
+        KCal::Incidence *journalEntry = format.fromString( str );
+
+        item->setMimeType( "application/x-vnd.akonadi.calendar.journal" );
+        item->setPayload<IncidencePtr>( IncidencePtr( journalEntry->clone() ) );
+
         break;
     }
     default:

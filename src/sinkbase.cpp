@@ -71,15 +71,15 @@ SinkBase::SinkBase( int features ) :
         m_SlowSync( false )
 {
 
-    m_canConnect = ( features & Connect ) ? true : false;
+    m_canConnect    = ( features & Connect ) ? true : false;
     m_canDisconnect = ( features & Disconnect ) ? true : false;
     m_canGetChanges = ( features & GetChanges ) ? true : false;
-    m_canCommit = ( features & Commit ) ? true : false;
-    m_canWrite = ( features & Write ) ? true : false;
-    m_canCommitAll = ( features & CommittedAll ) ? true : false;
-    m_canRead = ( features & Read ) ? true : false;
+    m_canCommit     = ( features & Commit ) ? true : false;
+    m_canWrite      = ( features & Write ) ? true : false;
+    m_canCommitAll  = ( features & CommittedAll ) ? true : false;
+    m_canRead       = ( features & Read ) ? true : false;
     m_canBatchCommit = ( features & BatchCommit ) ? true : false;
-    m_canSyncDone = ( features & SyncDone ) ? true : false;
+    m_canSyncDone   = ( features & SyncDone ) ? true : false;
 
 }
 
@@ -165,7 +165,7 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
 
     if ( ! m_canConnect )
         osync_objtype_sink_set_connect_func(sink, connect_wrapper);
-    if ( ! m_canDisconnect  || m_isContact || m_isEvent )
+    if ( ! m_canDisconnect )
         osync_objtype_sink_set_disconnect_func(sink, disconnect_wrapper);
     if ( ! m_canGetChanges || m_isContact || m_isEvent )
         osync_objtype_sink_set_get_changes_func(sink, get_changes_wrapper);
@@ -173,14 +173,14 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
     if ( ! m_canCommit  || m_isContact || m_isEvent )
         osync_objtype_sink_set_commit_func(sink, commit_wrapper);
 //   TODO: check if relevant for akonadi
-//   if ( m_canWrite )
-//     osync_objtype_sink_set_commit_func(sink, 0);
-//   if ( m_canCommitAll )
-//     osync_objtype_sink_set_commit_func(sink, 0);
-//   if ( m_canRead )
-//     osync_objtype_sink_set_commit_func(sink, 0);
-//   if ( m_canBatchCommit )
-//     osync_objtype_sink_set_commit_func(sink, 0);
+  if ( m_canWrite )
+    osync_objtype_sink_set_commit_func(sink, 0);
+  if ( m_canCommitAll )
+    osync_objtype_sink_set_commit_func(sink, 0);
+  if ( m_canRead )
+    osync_objtype_sink_set_commit_func(sink, 0);
+  if ( m_canBatchCommit )
+    osync_objtype_sink_set_commit_func(sink, 0);
     if ( ! m_canSyncDone  || m_isContact || m_isEvent)
         osync_objtype_sink_set_sync_done_func(sink, sync_done_wrapper);
 

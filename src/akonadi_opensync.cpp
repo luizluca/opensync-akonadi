@@ -86,8 +86,10 @@ extern "C"
             else if ( sinkName == "contact" )
                 ds = new DataSink( DataSink::Contacts );
 //       FIXME: implement todos an journal (notes)
-//             else if ( sinkName == "todo" )
-//                 ds = new DataSink( DataSink::Todos );
+            else if ( sinkName == "journal" )
+                ds = new DataSink( DataSink::Journals );
+            else if ( sinkName == "todo" )
+                ds = new DataSink( DataSink::Todos );
             else if ( sinkName == "note" )
                 ds = new DataSink( DataSink::Notes );
             else
@@ -104,6 +106,67 @@ extern "C"
         return mainSink;
 
     }
+    //FIXME: this is not working in opoensync
+    static QString toXml(QString str) {
+      str.replace("<","&lt;").replace(">","&gt;").replace("&","and");
+      return str;
+    }
+    
+    static osync_bool testSupport(OSyncPluginInfo *info,
+                                  OSyncPluginConfig *config,
+                                  const char* mType,
+                                  const char* mimeType,
+                                  const char* objFormat,
+                                  OSyncError **error ) {
+        // fetch all akonadi calendar collections
+        Akonadi::CollectionFetchScope scope;
+        scope.setIncludeUnsubscribed( true );
+        scope.setContentMimeTypes( QStringList() << mimeType );
+
+        Akonadi::CollectionFetchJob *jobCal = new Akonadi::CollectionFetchJob(
+            Akonadi::Collection::root(), Akonadi::CollectionFetchJob::Recursive );
+        jobCal->setFetchScope(scope);
+        if ( !jobCal->exec() )
+            return FALSE;
+
+        Akonadi::Collection::List colsCal = jobCal->collections();
+        kDebug() << "found" << colsCal.count() << "collections";
+
+// 	OSyncFormatEnv *formatEnv = osync_plugin_info_get_format_env(info);
+        OSyncObjTypeSink *sinkEvent = osync_objtype_sink_new(mType, error);
+        foreach ( const Akonadi::Collection &col, colsCal ) {
+            kDebug() << "processing resource " << col.name() << col.contentMimeTypes();
+            kDebug() << "                    " << col.name() << col.url().url();
+
+            OSyncPluginResource *res = osync_plugin_config_find_active_resource(config ,mType);
+            if ( res )
+	      osync_plugin_resource_enable(res,FALSE);
+	      //TODO add some logic here (compare names etc)
+// //                 osync_plugin_config_remove_resource(config,res);
+// 
+// 	      res = 
+// 	    }
+// 	    if ( ! res) 
+	      res = osync_plugin_resource_new( error );
+//             osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( "vevent20", error ) );
+            osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( objFormat, error ) );
+
+            osync_plugin_resource_enable(res,TRUE);
+            osync_plugin_resource_set_objtype( res, mType );
+            QString myname = toXml(col.name());
+            osync_plugin_resource_set_name( res, myname.toUtf8() ); // TODO: full path instead of the name
+            osync_plugin_resource_set_url( res, col.url().url().toLatin1() );
+
+            osync_plugin_resource_set_mime( res, mimeType );
+            osync_plugin_config_add_resource( config, res );
+        }
+        osync_objtype_sink_add_objformat_sink(sinkEvent,osync_objformat_sink_new (objFormat, error));
+        osync_objtype_sink_set_enabled( sinkEvent, TRUE );
+        osync_objtype_sink_set_available( sinkEvent, TRUE );
+//         osync_objtype_sink_add_objformat_sink( sinkEvent, "vevent20" );
+        osync_plugin_info_add_objtype( info, sinkEvent );
+        return TRUE;
+    }
 
     static osync_bool akonadi_discover(OSyncPluginInfo *info, void *userdata, OSyncError **error )
     {
@@ -118,116 +181,31 @@ extern "C"
         }
         if ( !Akonadi::Control::start() )
             return false;
-
-        // fetch all akonadi calendar collections
-        Akonadi::CollectionFetchScope scope;
-        scope.setIncludeUnsubscribed( true );
-        scope.setContentMimeTypes( QStringList() << "text/calendar" );
-
-        Akonadi::CollectionFetchJob *jobCal = new Akonadi::CollectionFetchJob(
-            Akonadi::Collection::root(), Akonadi::CollectionFetchJob::Recursive );
-        jobCal->setFetchScope(scope);
-        if ( !jobCal->exec() )
-            return false;
-
-        Akonadi::Collection::List colsCal = jobCal->collections();
-        kDebug() << "found" << colsCal.count() << "collections";
-
-// 	OSyncFormatEnv *formatEnv = osync_plugin_info_get_format_env(info);
-        OSyncObjTypeSink *sinkEvent = osync_objtype_sink_new("event", error);
-        foreach ( const Akonadi::Collection &col, colsCal ) {
-            kDebug() << "processing resource " << col.name() << col.contentMimeTypes();
-            kDebug() << "                    " << col.name() << col.url().url();
-            OSyncPluginResource *res = osync_plugin_config_find_active_resource(config ,"event");
-            if ( res )
-                osync_plugin_config_remove_resource(config,res);
-            res = osync_plugin_resource_new( error );
-            osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( "vevent20", error ) );
-
-
-            osync_plugin_resource_enable(res,TRUE);
-            osync_plugin_resource_set_objtype( res, "event" );
-            osync_plugin_resource_set_name( res, col.name().toUtf8() ); // TODO: full path instead of the name
-            osync_plugin_resource_set_url( res, col.url().url().toLatin1() );
-
-            osync_plugin_config_add_resource( config, res );
-// 	    osync_plugin_resource_set_mime( config, "text/calendar" );
-        }
-	osync_objtype_sink_add_objformat_sink(sinkEvent,osync_objformat_sink_new ("vevent20", error));
-        osync_objtype_sink_set_enabled( sinkEvent, TRUE );
-        osync_objtype_sink_set_available( sinkEvent, TRUE );
-//         osync_objtype_sink_add_objformat_sink( sinkEvent, "vevent20" );
-        osync_plugin_info_add_objtype( info, sinkEvent );
-            
-
+	
+	/*
+	Check for support of following types
+	
+	text/calendar - this is general mime for the whole calendar, but we are interested in the details
+	application/x-vnd.akonadi.calendar.event, 
+	application/x-vnd.akonadi.calendar.todo, 
+	application/x-vnd.akonadi.calendar.journal, 
+	application/x-vnd.akonadi.calendar.freebusy - this will be most probably ignored, so not checkign for it
+	*/
+	
+        if ( ! testSupport(info, config, "event", "application/x-vnd.akonadi.calendar.event", "vevent20" ,error) ) 
+	  return false;
+        	
+        if ( ! testSupport(info, config, "todo", "application/x-vnd.akonadi.calendar.todo", "vtodo10" ,error) ) 
+	  return false;
+	
+        if ( ! testSupport(info, config, "journal", "application/x-vnd.akonadi.calendar.journal", "vjournal" ,error) ) 
+	  return false;
         // fetch all address books
-        Akonadi::CollectionFetchJob *jobAddr = new Akonadi::CollectionFetchJob(
-            Akonadi::Collection::root(), Akonadi::CollectionFetchJob::Recursive );
-        scope.setContentMimeTypes( QStringList() << KABC::Addressee::mimeType() );
-        jobAddr->setFetchScope(scope);
-        if ( !jobAddr->exec() )
-            return false;
-
-        Akonadi::Collection::List colsAddr = jobAddr->collections();
-        kDebug() << "found" << colsAddr.count() << "collections";
-        OSyncObjTypeSink *sinkAddr = osync_objtype_sink_new("contact", error);
-        foreach ( const Akonadi::Collection &col, colsAddr ) {
-            kDebug() << "processing resource " << col.name() << col.contentMimeTypes();
-            kDebug() << "                    " << col.name() << col.url().url();
-            OSyncPluginResource *res = osync_plugin_config_find_active_resource(config ,"contact");
-            if ( res )
-                osync_plugin_config_remove_resource(config,res);
-            res = osync_plugin_resource_new( error );
-            osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( "vcard30", error ) );
-            osync_plugin_resource_enable(res,TRUE);
-            osync_plugin_resource_set_objtype( res, "contact" );
-            osync_plugin_resource_set_name( res, col.name().toUtf8() ); // TODO: full path instead of the name
-            osync_plugin_resource_set_url( res, col.url().url().toLatin1() );
-
-            osync_plugin_config_add_resource( config, res );
-// 	    osync_plugin_resource_set_mime( config, "text/calendar" );
-        }
-	osync_objtype_sink_add_objformat_sink(sinkAddr,osync_objformat_sink_new ("vcard30", error));
-        osync_objtype_sink_set_enabled( sinkAddr, TRUE );
-        osync_objtype_sink_set_available( sinkAddr, TRUE );
-//         osync_objtype_sink_add_objformat_sink( sinkAddr, "vcard30" );
-        osync_plugin_info_add_objtype( info, sinkAddr );
-
+        if ( ! testSupport(info, config, "contact", KABC::Addressee::mimeType().toLatin1(), "vcard30" ,error) ) 
+	  return false;
         // fetch all notes
-        Akonadi::CollectionFetchJob *jobNotes = new Akonadi::CollectionFetchJob(
-            Akonadi::Collection::root(), Akonadi::CollectionFetchJob::Recursive );
-        scope.setContentMimeTypes( QStringList() << "application/x-vnd.kde.notes" );
-        jobNotes->setFetchScope(scope);
-        if ( !jobNotes->exec() )
-            return false;
-
-        Akonadi::Collection::List colsNotes = jobNotes->collections();
-        kDebug() << "found" << colsNotes.count() << "collections";
-        OSyncObjTypeSink *sinkNotes = osync_objtype_sink_new("note", error);
-
-        foreach ( const Akonadi::Collection &col, colsNotes ) {
-            kDebug() << "processing resource " << col.name() << col.contentMimeTypes();
-            kDebug() << "                    " << col.name() << col.url().url();
-            OSyncPluginResource *res = osync_plugin_config_find_active_resource(config ,"note");
-            if ( res )
-                osync_plugin_config_remove_resource(config,res);
-            res = osync_plugin_resource_new( error );
-            osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( "vnote11", error ) );
-
-            osync_plugin_resource_enable(res,TRUE);
-            osync_plugin_resource_set_objtype( res, "note" );
-            osync_plugin_resource_set_name( res, col.name().toUtf8() ); // TODO: full path instead of the name
-            osync_plugin_resource_set_url( res, col.url().url().toLatin1() );
-
-            osync_plugin_config_add_resource( config, res );
-// 	    osync_plugin_resource_set_mime( config, "text/calendar" );
-        }
-
-	osync_objtype_sink_add_objformat_sink(sinkNotes,osync_objformat_sink_new ("vnote11", error));
-        osync_objtype_sink_set_enabled( sinkNotes, TRUE );
-        osync_objtype_sink_set_available( sinkNotes, TRUE );
-//         osync_objtype_sink_add_objformat_sink( sinkNotes, "vjournal" );
-        osync_plugin_info_add_objtype( info, sinkNotes );
+        if ( ! testSupport(info, config, "note", "application/x-vnd.kde.notes", "vnote11" ,error) ) 
+	  return false;
         // set information about the peer (KDE itself)
         {
             OSyncVersion *version = osync_version_new(error);
@@ -268,7 +246,7 @@ extern "C"
         osync_plugin_set_name(plugin, "akonadi-sync");
         osync_plugin_set_longname(plugin, "Akonadi");
         osync_plugin_set_description(plugin, "Plugin to synchronize with Akonadi");
-        osync_plugin_set_config_type(plugin, OSYNC_PLUGIN_NEEDS_CONFIGURATION);
+        osync_plugin_set_config_type(plugin, OSYNC_PLUGIN_OPTIONAL_CONFIGURATION);
         osync_plugin_set_initialize(plugin, akonadi_initialize);
         osync_plugin_set_finalize(plugin, akonadi_finalize);
         osync_plugin_set_discover(plugin, akonadi_discover);

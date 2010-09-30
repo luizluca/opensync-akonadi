@@ -72,7 +72,7 @@ class SinkBase : public QObject
     void warning( OSyncError *error ) const;
     void wrapSink( OSyncObjTypeSink* sink );
     OSyncObjTypeSink* sink() const { return mSink; }
-    bool m_isContact, m_isEvent, m_isTodo, m_isNote;
+    bool m_isContact, m_isEvent, m_isTodo, m_isNote; //TODO intended to be private
 
   private:
 //     OSyncObjTypeSinkFunctions mWrapedFunctions;

@@ -48,7 +48,7 @@ class DataSink : public SinkBase
   Q_OBJECT
 
   public:
-    enum Type { Calendars = 0, Contacts, Todos,  Notes };
+    enum Type { Calendars = 0, Contacts, Todos,  Notes, Journals };
 
     DataSink( int type );
     ~DataSink();
