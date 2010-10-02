@@ -36,7 +36,7 @@ extern "C"
     {
         WRAP( )
         sb->connect();
-        osync_context_report_success(ctx);
+//         osync_context_report_success(ctx);
 	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
@@ -71,20 +71,20 @@ extern "C"
 	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
-    static void read_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  OSyncChange *change, void *userdata) {
-        WRAP(  )
-        sb->commit(change);
-//         osync_context_report_success(ctx);
-	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
-    }
-
+//     static void read_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  OSyncChange *change, void *userdata) {
+//         WRAP(  )
+//         sb->commit(change);
+// //         osync_context_report_success(ctx);
+// 	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
+//     }
+// 
     static void commitAll_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  void *userdata) {
         WRAP(  )
         sb->commitAll();
 //         osync_context_report_success(ctx);
 	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
-
+// 
 //     static void commit_all_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  OSyncChange *change, void *userdata) {
 //         WRAP(  )
 //         sb->commitAll(change);
@@ -249,10 +249,10 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
 //   if ( m_canWrite )
 //     osync_objtype_sink_set_write(sink, TRUE);
 //   if ( m_canCommitAll || m_isContact || m_isEvent || m_isNote || m_isJournal || m_isTodo) {
-//   if ( m_canCommitAll ) {
-//     osync_objtype_sink_set_committed_all_func(sink, commitAll_wrapper);
-// 	osync_objtype_sink_set_committedall_timeout(sink, 5);
-//   }
+  if ( m_canCommitAll ) {
+    osync_objtype_sink_set_committed_all_func(sink, commitAll_wrapper);
+	osync_objtype_sink_set_committedall_timeout(sink, 5);
+  }
 //   if ( m_canRead ) {
 //     osync_objtype_sink_set_read_func(sink, read_wrapper);
 // 	osync_objtype_sink_set_read_timeout(sink, 5);

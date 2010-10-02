@@ -83,7 +83,8 @@ class SinkBase : public QObject
     OSyncObjTypeSink *mSink;
     OSyncPluginInfo *mPluginInfo;
 //     what do we have and what can we do
-    bool m_canConnect, m_canDisconnect, m_canCommit, m_canCommitAll, m_canGetChanges, m_canWrite, m_canRead, m_canSyncDone;
+    bool m_canConnect, m_canDisconnect, m_canCommit, m_canCommitAll, 
+	 m_canGetChanges, m_canWrite, m_canRead, m_canSyncDone;
 //     bool  m_canCommitRead, m_canBatchCommit;
     osync_bool m_SlowSync;
 };

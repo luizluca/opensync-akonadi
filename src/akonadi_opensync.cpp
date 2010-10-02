@@ -234,7 +234,8 @@ extern "C"
         osync_trace(TRACE_ENTRY, "%s(%p)", __func__, userdata);
         kDebug();
         AkonadiSink *sink = reinterpret_cast<AkonadiSink*>( userdata );
-        delete sink;
+	sink->disconnect();
+//         delete sink;
         delete kcd;
         kcd = 0;
         delete app;
