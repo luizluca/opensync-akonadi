@@ -2,6 +2,8 @@
     Copyright (c) 2008 Volker Krause <vkrause@kde.org>
     Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
 
+    $Id$
+    
     This library is free software; you can redistribute it and/or modify it
     under the terms of the GNU Library General Public License as published by
     the Free Software Foundation; either version 2 of the License, or (at your
