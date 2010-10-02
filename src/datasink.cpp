@@ -59,10 +59,11 @@ DataSink::DataSink( int type ) :
     kDebug() << "Create obj:" << type;
     m_type = type;
 
-//     m_isEvent = ( type == DataSink::Calendars ) ? true : false;
-//     m_isContact = ( type == DataSink::Contacts ) ? true : false;
-//     m_isNote = ( type == DataSink::Notes ) ? true : false;
-//     m_isTodo = ( type == DataSink::Todos ) ? true : false;
+    m_isEvent = ( type == DataSink::Calendars ) ? true : false;
+    m_isContact = ( type == DataSink::Contacts ) ? true : false;
+    m_isNote = ( type == DataSink::Notes ) ? true : false;
+    m_isTodo = ( type == DataSink::Todos ) ? true : false;
+    m_isJournal = ( type == DataSink::Journals ) ? true : false;
 
 }
 
@@ -84,11 +85,7 @@ bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObj
         return false;
     }
     
-    bool enabled = osync_objtype_sink_is_enabled( sink );
-    if ( ! enabled ) {
-        kDebug() << "sink is not enabled..";
-        return false;
-    }
+
 
 // kDebug() << "Sink wrapped: " << osync_objtype_sink_get_name(sink);
 
@@ -102,8 +99,20 @@ bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObj
 //     return false;
 //   }
 
-    wrapSink( sink );
+        osync_bool enabled = osync_objtype_sink_is_enabled( sink );
+    if ( ! enabled ) {
+        kDebug() << "sink is not enabled..";
+// 	osync_objtype_sink_remove_objformat_sink( sink );
+        return false;
+    }
     
+    osync_objtype_sink_set_userdata(sink, this);
+    osync_objtype_sink_enable_hashtable(sink , TRUE);
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink);
+
+    if ( ! hashtable )
+        kDebug() << ">> NO hashtable for objtype:" << osync_objtype_sink_get_name(sink);
+        
     OSyncPluginResource *resource = osync_plugin_config_find_active_resource(config, osync_objtype_sink_get_name(sink));
     OSyncList *objfrmtList = osync_plugin_resource_get_objformat_sinks(resource);
     
@@ -112,24 +121,86 @@ bool DataSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObj
          for(r = objfrmtList;r;r = r->next) {
                  OSyncObjFormatSink *objformatsink = (OSyncObjFormatSink *) r->data;
 
+		 switch (m_type) {
+		   case Contacts: {
+                 if(!strcmp("vcard21", osync_objformat_sink_get_objformat(objformatsink))) {
+                        hasObjFormat = true;
+			 kDebug() << "Has objformat vcard21";
+                         break;
+                 } else
+			 kDebug() << "No objformat vcard21";
+		 
                  if(!strcmp("vcard30", osync_objformat_sink_get_objformat(objformatsink))) {
                         hasObjFormat = true;
 			 kDebug() << "Has objformat vcard30";
                          break;
-                 }
-         }
-
-         if (!hasObjFormat) {
+                 } else
 			 kDebug() << "No objformat vcard30";
-                 return false;
+		 
+		 break;
+		 }
+		   case Calendars: {
+		     if(!strcmp("vevent10", osync_objformat_sink_get_objformat(objformatsink))) {
+                        hasObjFormat = true;
+			 kDebug() << "Has objformat vevent10";
+                         break;
+		     } else
+			 kDebug() << "No objformat vevent10";
+		     break;
+		     if(!strcmp("vevent20", osync_objformat_sink_get_objformat(objformatsink))) {
+                        hasObjFormat = true;
+			 kDebug() << "Has objformat vevent20";
+                         break;
+		     } else
+			 kDebug() << "No objformat vevent20";
+		     break;
+		   }
+		   case Notes: {
+		     if(!strcmp("vnote11", osync_objformat_sink_get_objformat(objformatsink))) {
+                        hasObjFormat = true;
+			 kDebug() << "Has objformat vnote11";
+                         break;
+		     } else
+			 kDebug() << "No objformat vnote11";
+		     break;
+		   }
+		   case Journals: {
+		     if(!strcmp("vjournal", osync_objformat_sink_get_objformat(objformatsink))) {
+                        hasObjFormat = true;
+			 kDebug() << "Has objformat vjournal";
+                         break;
+		     } else
+			 kDebug() << "No objformat vjournal";
+		     break;
+		   }
+		   case Todos: {
+		     if(!strcmp("vtodo10", osync_objformat_sink_get_objformat(objformatsink))) {
+                        hasObjFormat = true;
+			 kDebug() << "Has objformat vtodo10";
+                         break;
+		     } else
+			 kDebug() << "No objformat vtodo10";
+		     if(!strcmp("vtodo20", osync_objformat_sink_get_objformat(objformatsink))) {
+                        hasObjFormat = true;
+			 kDebug() << "Has objformat vtodo20";
+                         break;
+		     } else
+			 kDebug() << "No objformat vtodo20";
+		     break;
+		   }
+		 
+		   default:
+		     continue;
+		 }
          }
-    
-    osync_objtype_sink_set_userdata(sink, this);
-    osync_objtype_sink_enable_hashtable(sink , TRUE);
-    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink);
 
-    if ( ! hashtable )
-        kDebug() << ">> NO hashtable for objtype:" << osync_objtype_sink_get_name(sink);
+//          if (!hasObjFormat) {
+// 			 kDebug() << "No objformat vcard30";
+//                  return false;
+//          }
+
+    
+    wrapSink( sink );
     
     return true;
 }
@@ -174,17 +245,16 @@ void DataSink::getChanges()
 // FIXME
     if ( getSlowSink() ) {
         kDebug() << "we're in the middle of slow-syncing...";
-        osync_trace( TRACE_INTERNAL, "EKO Got slow-sync, resetting hashtable" );
+        osync_trace( TRACE_INTERNAL, "resetting hashtable" );
         if ( ! osync_hashtable_slowsync( hashtable, &oerror ) ) {
             warning( oerror );
             osync_trace( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print( &oerror ) );
-	    kDebug() << "Will abort >>> whatever - because of slowsync";
             return;
         }
     }
 
     ItemFetchJob *job = new ItemFetchJob( col );
-    job->fetchScope().fetchFullPayload();
+    job->fetchScope().fetchFullPayload(true);
     kDebug() << "Fetched FullPayload" ;
 
     QObject::connect( job, SIGNAL( itemsReceived( const Akonadi::Item::List & ) ), this, SLOT( slotItemsReceived( const Akonadi::Item::List & ) ) );
@@ -202,13 +272,20 @@ void DataSink::slotItemsReceived( const Item::List &items )
 {
     kDebug() << "retrieved" << items.count() << "items";
     Q_FOREACH( const Item& item, items ) {
-        kDebug() << item.payloadData();
+        kDebug() << "Id:" << item.id() << "\n";
+        kDebug() << "Mime:" << item.mimeType() << "\n";
+        kDebug() << "availablePayloadParts:" << item.availablePayloadParts() << "\n";
+        kDebug() << "storageCollectionId:" << item.storageCollectionId() << "\n";
+        kDebug() << "url:" << item.url() << "\n";
         reportChange( item );
     }
 }
 
 void DataSink::reportChange( const Item& item )
 {
+
+    kDebug() << item.id() << "\n" ;
+    kDebug() << "item.payloadData().data():" << item.payloadData().data() << "\n" ;
     OSyncFormatEnv *formatenv = osync_plugin_info_get_format_env( pluginInfo() );
     OSyncObjFormat *format = osync_format_env_find_objformat( formatenv, formatName().toLatin1() );
 
@@ -224,7 +301,7 @@ void DataSink::reportChange( const Item& item )
     osync_change_set_uid( change, QString::number( item.id() ).toLatin1() );
 
     error = 0;
-
+    
     OSyncData *odata = osync_data_new( item.payloadData().data(), item.payloadData().size(), format, &error );
     if ( !odata ) {
         osync_change_unref( change );
@@ -235,7 +312,7 @@ void DataSink::reportChange( const Item& item )
 
     osync_change_set_data( change, odata );
 
-    kDebug() << item.id() << "\n" << "DATA:" << osync_data_get_printable( odata , &error) << "\n" << "ORIG:" << item.payloadData().data();
+//     kDebug() << item.id() << "\n" << "DATA:" << osync_data_get_printable( odata , &error) << "\n" ;
 
     osync_data_unref( odata );
     osync_change_set_hash( change, QString::number( item.revision() ).toLatin1() );
@@ -244,13 +321,13 @@ void DataSink::reportChange( const Item& item )
 
 
     /* */
-    kDebug() << "changeid:" << osync_change_get_uid( change )
-               << "itemid:" << item.id()
-               << "revision:" << item.revision()
-               << "changetype:" << changeType
-               << "hash:" << osync_hashtable_get_hash( hashtable, osync_change_get_uid( change ) )
-               << "objtype:" << osync_change_get_objtype( change )
-               << "objform:" << osync_objformat_get_name( osync_change_get_objformat( change ) )
+    kDebug() << "changeid:" << osync_change_get_uid( change )  << "; " 
+               << "itemid:" << item.id()<< "; " 
+               << "revision:" << item.revision()<< "; " 
+               << "changetype:" << changeType << "; " 
+               << "hash:" << osync_hashtable_get_hash( hashtable, osync_change_get_uid( change ) ) << "; " 
+               << "objtype:" << osync_change_get_objtype( change ) << "; " 
+               << "objform:" << osync_objformat_get_name( osync_change_get_objformat( change ) ) << "; " 
                << "sinkname:" << osync_objtype_sink_get_name( sink() );
     /* */
 
@@ -303,7 +380,7 @@ void DataSink::slotGetChangesFinished( KJob * )
     osync_list_free( uids );
 
     kDebug() << "got all changes..";
-    success();
+
 }
 
 void DataSink::commit(OSyncChange *change)
@@ -406,20 +483,12 @@ void DataSink::deleteItem( OSyncChange *change )
     }
     else
      kDebug() << "unable to delete item";*/
+    success(); // TODO
 }
 
 bool DataSink::setPayload( Item *item, const QString &str )
 {
     switch ( m_type ) {
-    case Calendars: {
-        KCal::ICalFormat format;
-        KCal::Incidence *calEntry = format.fromString( str );
-
-        item->setMimeType( "application/x-vnd.akonadi.calendar.event" );
-        item->setPayload<IncidencePtr>( IncidencePtr( calEntry->clone() ) );
-
-        break;
-    }
     case Contacts: {
         KABC::VCardConverter converter;
         KABC::Addressee vcard = converter.parseVCard( str.toLatin1() );
@@ -430,9 +499,18 @@ bool DataSink::setPayload( Item *item, const QString &str )
         //item->setPayload<KABC::Addressee>( vcard.toString() ); // FIXME
         break;
     }
-    case Todos: {
+    case Calendars: {
         KCal::ICalFormat format;
-        KCal::Incidence *todoEntry = format.fromString( str );
+        KCal::Incidence *calEntry = format.fromString( str );
+
+        item->setMimeType( "application/x-vnd.akonadi.calendar.event" );
+        item->setPayload<IncidencePtr>( IncidencePtr( calEntry->clone() ) );
+
+        break;
+    }
+    case Todos: {
+        KCal::ICalFormat format; 
+        KCal::Incidence *todoEntry = format.fromString(str); //format.fromString( str );
 
         item->setMimeType( "application/x-vnd.akonadi.calendar.todo" );
         item->setPayload<IncidencePtr>( IncidencePtr( todoEntry->clone() ) );
@@ -442,7 +520,7 @@ bool DataSink::setPayload( Item *item, const QString &str )
     case Notes: {
         kDebug() << "notes";
         KCal::ICalFormat format;
-        KCal::Incidence *noteEntry = format.fromString( str );
+        KCal::Incidence *noteEntry = format.fromString(str);
 
         item->setMimeType( "application/x-vnd.kde.notes" );
         item->setPayload<IncidencePtr>( IncidencePtr( noteEntry->clone() ) );
@@ -452,7 +530,7 @@ bool DataSink::setPayload( Item *item, const QString &str )
     case Journals: {
         kDebug() << "journals";
         KCal::ICalFormat format;
-        KCal::Incidence *journalEntry = format.fromString( str );
+        KCal::Incidence *journalEntry = format.fromString(str);
 
         item->setMimeType( "application/x-vnd.akonadi.calendar.journal" );
         item->setPayload<IncidencePtr>( IncidencePtr( journalEntry->clone() ) );
@@ -486,7 +564,7 @@ const QString DataSink::formatName()
         formatName = "vevent20";
         break;
     case Contacts:
-        formatName = "vcard10";
+        formatName = "vcard30";
         break;
     case Notes:
         formatName = "vjournal";
@@ -524,10 +602,6 @@ void DataSink::syncDone()
 {
     kDebug() << "sync for sink member done";
         OSyncError *error = 0;
-// 	OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable(sink());
-//    osync_objtype_sink_save_hashtable( sink, &error );
-//    OSyncError *error = 0;
-// OSyncObjTypeSink *sink =sink();
   osync_objtype_sink_save_hashtable( sink() , &error );
     //TODO check for errors
     success();

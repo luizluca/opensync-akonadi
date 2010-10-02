@@ -29,7 +29,7 @@
 #include <opensync/opensync-format.h>
 
 AkonadiSink::AkonadiSink() :
-    SinkBase( Connect )
+        SinkBase( Connect )
 {
 }
 
@@ -40,35 +40,36 @@ AkonadiSink::~AkonadiSink()
 bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncError ** error)
 {
     Q_UNUSED( plugin );
-  kDebug();
-  
-  if ( !Akonadi::Control::start() )
-            return false;
-  
-  OSyncObjTypeSink *sink = osync_objtype_main_sink_new( error );
-          if (!sink) {
-	    
-	kDebug() << "No sink ";
-	return false;
-	  }
-  osync_plugin_info_set_main_sink( info, sink );
-  wrapSink( sink );
+    kDebug();
 
-  return true;
+    if ( !Akonadi::Control::start() )
+        return false;
+
+    OSyncObjTypeSink *sink = osync_objtype_main_sink_new( error );
+    if (!sink) {
+
+        kDebug() << "No sink ";
+        return false;
+    }
+    osync_plugin_info_set_main_sink( info, sink );
+    osync_objtype_sink_set_userdata(sink, this);
+    wrapSink( sink );
+
+    return true;
 }
 
 void AkonadiSink::connect()
 {
-  osync_trace(TRACE_ENTRY, "%s(%p, %p)", __PRETTY_FUNCTION__, pluginInfo(), context());
-  kDebug();
+    osync_trace(TRACE_ENTRY, "%s(%p, %p)", __PRETTY_FUNCTION__, pluginInfo(), context());
+    kDebug();
 
-  if ( !Akonadi::Control::start() ) {
-    error( OSYNC_ERROR_NO_CONNECTION, "Could not start Akonadi." );
-    osync_trace(TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, "Could not start Akonadi.");
-    return;
-  }
-  success();
-  osync_trace(TRACE_EXIT, "%s", __PRETTY_FUNCTION__);
+    if ( !Akonadi::Control::start() ) {
+        error( OSYNC_ERROR_NO_CONNECTION, "Could not start Akonadi." );
+        osync_trace(TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, "Could not start Akonadi.");
+        return;
+    }
+//   success();
+    osync_trace(TRACE_EXIT, "%s", __PRETTY_FUNCTION__);
 }
 
 

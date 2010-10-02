@@ -56,6 +56,9 @@ class SinkBase : public QObject
     virtual void disconnect();
     virtual void getChanges();
     virtual void commit( OSyncChange *chg );
+    virtual void write();
+    virtual void read();
+    virtual void commitAll();
     virtual void syncDone();
 
     OSyncContext* context() const { return mContext; }
@@ -72,7 +75,7 @@ class SinkBase : public QObject
     void warning( OSyncError *error ) const;
     void wrapSink( OSyncObjTypeSink* sink );
     OSyncObjTypeSink* sink() const { return mSink; }
-    bool m_isContact, m_isEvent, m_isTodo, m_isNote; //TODO intended to be private
+    bool m_isContact, m_isEvent, m_isTodo, m_isNote, m_isJournal; //TODO intended to be private
 
   private:
 //     OSyncObjTypeSinkFunctions mWrapedFunctions;
@@ -80,8 +83,8 @@ class SinkBase : public QObject
     OSyncObjTypeSink *mSink;
     OSyncPluginInfo *mPluginInfo;
 //     what do we have and what can we do
-    bool m_canConnect, m_canDisconnect, m_canSyncDone, m_canCommit, m_canGetChanges;
-    bool m_canWrite, m_canRead, m_canCommitAll, m_canCommitRead, m_canBatchCommit;
+    bool m_canConnect, m_canDisconnect, m_canCommit, m_canCommitAll, m_canGetChanges, m_canWrite, m_canRead, m_canSyncDone;
+//     bool  m_canCommitRead, m_canBatchCommit;
     osync_bool m_SlowSync;
 };
 

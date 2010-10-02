@@ -23,43 +23,74 @@
 #include "sinkbase.h"
 #include <KDebug>
 
-#define WRAP(X) \
+#define WRAP() \
   osync_trace( TRACE_ENTRY, "%s(%p,%p, %p, %p)", __PRETTY_FUNCTION__, sink, info, ctx, userdata); \
   SinkBase *sb = reinterpret_cast<SinkBase*>(userdata ); \
   sb->setContext( ctx ); \
-  sb->setPluginInfo( info ); \
-  sb->X; \
-  osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
+  sb->setPluginInfo( info ); 
 
 extern "C"
 {
 
     static void connect_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, void *userdata )
     {
-        WRAP( connect() )
+        WRAP( )
+        sb->connect();
         osync_context_report_success(ctx);
+	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
     static void disconnect_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, void *userdata) {
-        WRAP( disconnect() )
+        WRAP(  )
+        sb->disconnect();
 //         osync_context_report_success(ctx);
+	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
     static void get_changes_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, osync_bool slow_sync, void *userdata) {
 
-        WRAP ( getChanges() )
+        WRAP (  )
         if ( slow_sync )
             sb->setSlowSink(slow_sync);
+        sb->getChanges();
 //         osync_context_report_success(ctx);
+	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
     static void sync_done_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, void *userdata) {
-        WRAP( syncDone() )
+        WRAP(  )
+        sb->syncDone();
+//         osync_context_report_success(ctx);
+	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
     static void commit_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  OSyncChange *change, void *userdata) {
-        WRAP( commit(change) )
+        WRAP(  )
+        sb->commit(change);
+//         osync_context_report_success(ctx);
+	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
+
+    static void read_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  OSyncChange *change, void *userdata) {
+        WRAP(  )
+        sb->commit(change);
+//         osync_context_report_success(ctx);
+	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
+    }
+
+    static void commitAll_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  void *userdata) {
+        WRAP(  )
+        sb->commitAll();
+//         osync_context_report_success(ctx);
+	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
+    }
+
+//     static void commit_all_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  OSyncChange *change, void *userdata) {
+//         WRAP(  )
+//         sb->commitAll(change);
+// //         osync_context_report_success(ctx);
+// 	osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
+//     }
 
 } // extern C
 
@@ -68,7 +99,16 @@ SinkBase::SinkBase( int features ) :
         mContext( 0 ),
         mSink( 0 ),
         mPluginInfo( 0 ),
-        m_SlowSync( false )
+    m_canConnect(false),
+    m_canDisconnect(false),
+    m_canCommit    (false),
+    m_canCommitAll (false),
+//     m_canBatchCommit(false),
+    m_canGetChanges(false),
+    m_canWrite     (false),
+    m_canRead      (false),
+    m_canSyncDone  (false),
+    m_SlowSync     (false)
 {
 
     m_canConnect    = ( features & Connect ) ? true : false;
@@ -78,15 +118,19 @@ SinkBase::SinkBase( int features ) :
     m_canWrite      = ( features & Write ) ? true : false;
     m_canCommitAll  = ( features & CommittedAll ) ? true : false;
     m_canRead       = ( features & Read ) ? true : false;
-    m_canBatchCommit = ( features & BatchCommit ) ? true : false;
+//     m_canBatchCommit = ( features & BatchCommit ) ? true : false;
     m_canSyncDone   = ( features & SyncDone ) ? true : false;
 
 }
 
 SinkBase::~SinkBase()
 {
+    if ( mContext) 
+      osync_context_unref(mContext);
     if ( mSink )
         osync_objtype_sink_unref( mSink );
+    if (mPluginInfo)
+      osync_plugin_info_unref(mPluginInfo);
 }
 
 void SinkBase::connect()
@@ -122,6 +166,22 @@ void SinkBase::commit(OSyncChange * chg)
     Q_ASSERT( false );
 }
 
+void SinkBase::commitAll()
+{
+    Q_ASSERT( false );
+}
+
+void SinkBase::write()
+{
+    Q_ASSERT( false );
+}
+
+void SinkBase::read()
+{
+    Q_ASSERT( false );
+}
+
+
 void SinkBase::syncDone()
 {
     Q_ASSERT( false );
@@ -132,7 +192,7 @@ void SinkBase::success() const
     kDebug();
     Q_ASSERT( mContext );
     osync_context_report_success( mContext );
-    mContext = 0;
+//     mContext = 0;
 }
 
 void SinkBase::error(OSyncErrorType type, const QString &msg) const
@@ -157,32 +217,50 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
     Q_ASSERT( sink );
     Q_ASSERT( mSink == 0 );
     mSink = sink;
-    
         
     kDebug() << ">> m_canConnect:" << m_canConnect;
+    kDebug() << ">> m_canDisconnect:" << m_canDisconnect;
+    kDebug() << ">> m_canCommit:" << m_canCommit;
     kDebug() << ">> m_canGetChanges:" << m_canGetChanges;
+    kDebug() << ">> m_canWrite:" << m_canConnect;
+    kDebug() << ">> m_canCommitAll:" << m_canGetChanges;
+    kDebug() << ">> m_canRead:" << m_canConnect;
+    kDebug() << ">> m_canSyncDone:" << m_canGetChanges;
 //     kDebug() << ">> NO hashtable for objtype:" << m_canConnect;
 
-    if ( ! m_canConnect )
+//     if ( m_canConnect && ( m_isEvent || m_isContact || m_isJournal || m_isNote || m_isTodo) ) {
+    if ( m_canConnect ) {
         osync_objtype_sink_set_connect_func(sink, connect_wrapper);
-    if ( ! m_canDisconnect )
+	osync_objtype_sink_set_connect_timeout(sink, 5);
+    }
+    if ( m_canDisconnect ) {
         osync_objtype_sink_set_disconnect_func(sink, disconnect_wrapper);
-    if ( ! m_canGetChanges || m_isContact || m_isEvent )
+	osync_objtype_sink_set_disconnect_timeout(sink, 5);
+    }
+    if ( m_canGetChanges ) {
         osync_objtype_sink_set_get_changes_func(sink, get_changes_wrapper);
-
-    if ( ! m_canCommit  || m_isContact || m_isEvent )
+	osync_objtype_sink_set_getchanges_timeout(sink, 5);
+    }
+    if ( m_canCommit ) {
         osync_objtype_sink_set_commit_func(sink, commit_wrapper);
+	osync_objtype_sink_set_commit_timeout(sink, 5);
+    }
 //   TODO: check if relevant for akonadi
-  if ( m_canWrite )
-    osync_objtype_sink_set_commit_func(sink, 0);
-  if ( m_canCommitAll )
-    osync_objtype_sink_set_commit_func(sink, 0);
-  if ( m_canRead )
-    osync_objtype_sink_set_commit_func(sink, 0);
-  if ( m_canBatchCommit )
-    osync_objtype_sink_set_commit_func(sink, 0);
-    if ( ! m_canSyncDone  || m_isContact || m_isEvent)
+//   if ( m_canWrite )
+//     osync_objtype_sink_set_write(sink, TRUE);
+//   if ( m_canCommitAll || m_isContact || m_isEvent || m_isNote || m_isJournal || m_isTodo) {
+//   if ( m_canCommitAll ) {
+//     osync_objtype_sink_set_committed_all_func(sink, commitAll_wrapper);
+// 	osync_objtype_sink_set_committedall_timeout(sink, 5);
+//   }
+//   if ( m_canRead ) {
+//     osync_objtype_sink_set_read_func(sink, read_wrapper);
+// 	osync_objtype_sink_set_read_timeout(sink, 5);
+//   }
+    if ( m_canSyncDone ) {
         osync_objtype_sink_set_sync_done_func(sink, sync_done_wrapper);
+	osync_objtype_sink_set_syncdone_timeout(sink, 5);
+    }
 
 }
 

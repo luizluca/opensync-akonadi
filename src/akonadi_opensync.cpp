@@ -106,7 +106,8 @@ extern "C"
         return mainSink;
 
     }
-    //FIXME: this is not working in opoensync
+    //FIXME: this probably a bug in opoensync
+    //		replace &
     static QString toXml(QString str) {
       str.replace("<","&lt;").replace(">","&gt;").replace("&","and");
       return str;
@@ -134,11 +135,12 @@ extern "C"
 
 // 	OSyncFormatEnv *formatEnv = osync_plugin_info_get_format_env(info);
         OSyncObjTypeSink *sinkEvent = osync_objtype_sink_new(mType, error);
+	OSyncPluginResource *res = NULL;
         foreach ( const Akonadi::Collection &col, colsCal ) {
             kDebug() << "processing resource " << col.name() << col.contentMimeTypes();
             kDebug() << "                    " << col.name() << col.url().url();
 
-            OSyncPluginResource *res = osync_plugin_config_find_active_resource(config ,mType);
+            res = osync_plugin_config_find_active_resource(config ,mType);
             if ( res )
 	      osync_plugin_resource_enable(res,FALSE);
 	      //TODO add some logic here (compare names etc)
@@ -165,6 +167,7 @@ extern "C"
         osync_objtype_sink_set_available( sinkEvent, TRUE );
 //         osync_objtype_sink_add_objformat_sink( sinkEvent, "vevent20" );
         osync_plugin_info_add_objtype( info, sinkEvent );
+
         return TRUE;
     }
 
@@ -193,19 +196,24 @@ extern "C"
 	*/
 	
         if ( ! testSupport(info, config, "event", "application/x-vnd.akonadi.calendar.event", "vevent20" ,error) ) 
-	  return false;
+	  kDebug() << "NO support for vevent20";
+// 	  return false;
         	
         if ( ! testSupport(info, config, "todo", "application/x-vnd.akonadi.calendar.todo", "vtodo10" ,error) ) 
-	  return false;
+	  kDebug() << "NO support for vtodo10";
+// 	  return false;
 	
         if ( ! testSupport(info, config, "journal", "application/x-vnd.akonadi.calendar.journal", "vjournal" ,error) ) 
-	  return false;
+	  kDebug() << "NO support for vjournal";
+// 	  return false;
         // fetch all address books
         if ( ! testSupport(info, config, "contact", KABC::Addressee::mimeType().toLatin1(), "vcard30" ,error) ) 
-	  return false;
+	  kDebug() << "NO support for vcard30";
+// 	  return false;
         // fetch all notes
         if ( ! testSupport(info, config, "note", "application/x-vnd.kde.notes", "vnote11" ,error) ) 
-	  return false;
+	  kDebug() << "NO support for vnote11";
+// 	  return false;
         // set information about the peer (KDE itself)
         {
             OSyncVersion *version = osync_version_new(error);
@@ -248,6 +256,7 @@ extern "C"
         osync_plugin_set_description(plugin, "Plugin to synchronize with Akonadi");
         osync_plugin_set_config_type(plugin, OSYNC_PLUGIN_OPTIONAL_CONFIGURATION);
         osync_plugin_set_initialize(plugin, akonadi_initialize);
+        osync_plugin_set_finalize_timeout(plugin, 5);
         osync_plugin_set_finalize(plugin, akonadi_finalize);
         osync_plugin_set_discover(plugin, akonadi_discover);
         osync_plugin_set_start_type(plugin, OSYNC_START_TYPE_PROCESS);
