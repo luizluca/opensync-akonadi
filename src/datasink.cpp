@@ -20,30 +20,26 @@
     02110-1301, USA.
 */
 
-// #include <glib.h>
-// #include <glib/ghash.h>
-
 #include "datasink.h"
-
-// #include <opensync/opensync.h>
-// #include <opensync/opensync-helper.h>
-// #include <opensync/opensync-plugin.h>
 
 #include <akonadi/collectionfetchjob.h>
 #include <akonadi/collectionfetchscope.h>
+#include <akonadi/itemdeletejob.h>
 
 // calendar includes
 #include <kcal/incidence.h>
 #include <kcal/icalformat.h>
 
 // contact includes
-#include <kabc/vcardconverter.h>
 #include <kabc/addressee.h>
+#include <kabc/vcardconverter.h>
+#include <kabc/vcardparser.h>
+#include <kabc/vcardformat.h>
 
-// #include <glib/gtypes.h>
-// #include <glib/glist.h>
-// notes includes
 // TODO
+// notes includes
+// todos includes
+// journals includes
 
 #include <KDebug>
 #include <KLocale>
@@ -52,174 +48,120 @@
 using namespace Akonadi;
 
 typedef boost::shared_ptr<KCal::Incidence> IncidencePtr;
+typedef boost::shared_ptr<KABC::Addressee> Incidence2Ptr;
 
 DataSink::DataSink ( int type ) :
-    SinkBase ( GetChanges | Commit | SyncDone )
+        SinkBase ( GetChanges | Commit | SyncDone ),
+        m_Format(0)
 {
-  kDebug() << "Create obj:" << type;
-  m_type = type;
+    kDebug() << "Constr.objtype:" << type;
+    m_type = type;
 
-  m_isEvent = ( type == DataSink::Calendars ) ? true : false;
-  m_isContact = ( type == DataSink::Contacts ) ? true : false;
-  m_isNote = ( type == DataSink::Notes ) ? true : false;
-  m_isTodo = ( type == DataSink::Todos ) ? true : false;
-  m_isJournal = ( type == DataSink::Journals ) ? true : false;
+    m_isEvent = ( type == DataSink::Calendars ) ? true : false;
+    m_isContact = ( type == DataSink::Contacts ) ? true : false;
+    m_isNote = ( type == DataSink::Notes ) ? true : false;
+    m_isTodo = ( type == DataSink::Todos ) ? true : false;
+    m_isJournal = ( type == DataSink::Journals ) ? true : false;
 
 }
 
 DataSink::~DataSink()
 {
-  kDebug() << "DataSink destructor called"; // TODO still needed
+    kDebug() << "DataSink destructor called"; // TODO still needed
 }
 
 bool DataSink::initialize ( OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncObjTypeSink *sink, OSyncError ** error )
 {
-  kDebug() << "initializing" << osync_objtype_sink_get_name ( sink );
-  kDebug() << "TYPE        " << m_type;
-  Q_UNUSED ( plugin );
-  Q_UNUSED ( info );
-  Q_UNUSED ( error );
+    kDebug() << "initializing" << osync_objtype_sink_get_name ( sink );
+    Q_UNUSED ( plugin );
+    Q_UNUSED ( info );
+    Q_UNUSED ( error );
 
-  OSyncPluginConfig *config = osync_plugin_info_get_config ( info );
-  if ( !config )
+    OSyncPluginConfig *config = osync_plugin_info_get_config ( info );
+    if ( !config )
     {
-      osync_error_set ( error, OSYNC_ERROR_GENERIC, "Unable to get config." );
-      return false;
+        osync_error_set ( error, OSYNC_ERROR_GENERIC, "Unable to get config." );
+        return false;
     }
 
-  osync_bool enabled = osync_objtype_sink_is_enabled ( sink );
-  if ( ! enabled )
+    osync_bool enabled = osync_objtype_sink_is_enabled ( sink );
+    if ( ! enabled )
     {
-      kDebug() << "sink is not enabled..";
+        kDebug() << "sink is not enabled..";
 // 	osync_objtype_sink_remove_objformat_sink( sink );
-      return false;
+	osync_objtype_sink_set_available(sink, FALSE);
+        return false;
+    } else {
+	osync_objtype_sink_set_available(sink, TRUE);
     }
 
-  wrapSink ( sink );
+    OSyncPluginResource *resource = osync_plugin_config_find_active_resource ( config, osync_objtype_sink_get_name ( sink ) );
+    OSyncList *objfrmtList = osync_plugin_resource_get_objformat_sinks ( resource );
 
-    
-  OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink );
-
-  if ( ! hashtable )
-    kDebug() << ">> NO hashtable for objtype:" << osync_objtype_sink_get_name ( sink );
-
-  OSyncPluginResource *resource = osync_plugin_config_find_active_resource ( config, osync_objtype_sink_get_name ( sink ) );
-  OSyncList *objfrmtList = osync_plugin_resource_get_objformat_sinks ( resource );
-
-  OSyncList *r;
-  bool hasObjFormat;
-  for ( r = objfrmtList;r;r = r->next )
+    OSyncList *r;
+//   bool hasObjFormat;
+    for ( r = objfrmtList;r;r = r->next )
     {
-      OSyncObjFormatSink *objformatsink = ( OSyncObjFormatSink * ) r->data;
+        OSyncObjFormatSink *objformatsink = ( OSyncObjFormatSink * ) r->data;
+        const char* tobjformat = osync_objformat_sink_get_objformat ( objformatsink );
 
-      switch ( m_type )
+        switch ( m_type )
         {
         case Contacts:
         {
-          if ( !strcmp ( "vcard21", osync_objformat_sink_get_objformat ( objformatsink ) ) )
-            {
-              hasObjFormat = true;
-              kDebug() << "Has objformat vcard21";
-              break;
-            }
-          else
-            kDebug() << "No objformat vcard21";
-
-          if ( !strcmp ( "vcard30", osync_objformat_sink_get_objformat ( objformatsink ) ) )
-            {
-              hasObjFormat = true;
-              kDebug() << "Has objformat vcard30";
-              break;
-            }
-          else
-            kDebug() << "No objformat vcard30";
-
-          break;
+            if ( !strcmp ( "vcard21", tobjformat ) )
+                m_Format = "vcard21";
+            else if ( !strcmp ( "vcard30", tobjformat ) )
+                m_Format = "vcard30";
+            break;
         }
         case Calendars:
         {
-          if ( !strcmp ( "vevent10", osync_objformat_sink_get_objformat ( objformatsink ) ) )
-            {
-              hasObjFormat = true;
-              kDebug() << "Has objformat vevent10";
-              break;
-            }
-          else
-            kDebug() << "No objformat vevent10";
-          break;
-          if ( !strcmp ( "vevent20", osync_objformat_sink_get_objformat ( objformatsink ) ) )
-            {
-              hasObjFormat = true;
-              kDebug() << "Has objformat vevent20";
-              break;
-            }
-          else
-            kDebug() << "No objformat vevent20";
-          break;
+            if ( !strcmp ( "vevent10", tobjformat ) )
+                m_Format = "vevent10";
+            else if ( !strcmp ( "vevent20", tobjformat ) )
+                m_Format = "vevent20";
+            break;
         }
         case Notes:
         {
-          if ( !strcmp ( "vnote11", osync_objformat_sink_get_objformat ( objformatsink ) ) )
-            {
-              hasObjFormat = true;
-              kDebug() << "Has objformat vnote11";
-              break;
-            }
-          else
-            kDebug() << "No objformat vnote11";
-          break;
+            if ( !strcmp ( "vnote11", tobjformat ) )
+                m_Format = "vnote11";
+            break;
         }
         case Journals:
         {
-          if ( !strcmp ( "vjournal", osync_objformat_sink_get_objformat ( objformatsink ) ) )
-            {
-              hasObjFormat = true;
-              kDebug() << "Has objformat vjournal";
-              break;
-            }
-          else
-            kDebug() << "No objformat vjournal";
-          break;
+            if ( !strcmp ( "vjournal", tobjformat ) )
+                m_Format = "vjournal";
+            break;
         }
         case Todos:
         {
-          if ( !strcmp ( "vtodo10", osync_objformat_sink_get_objformat ( objformatsink ) ) )
-            {
-              hasObjFormat = true;
-              kDebug() << "Has objformat vtodo10";
-              break;
-            }
-          else
-            kDebug() << "No objformat vtodo10";
-          if ( !strcmp ( "vtodo20", osync_objformat_sink_get_objformat ( objformatsink ) ) )
-            {
-              hasObjFormat = true;
-              kDebug() << "Has objformat vtodo20";
-              break;
-            }
-          else
-            kDebug() << "No objformat vtodo20";
-          break;
+            if ( !strcmp ( "vtodo10", tobjformat ) )
+                m_Format = "vtodo10";
+            else if ( !strcmp ( "vtodo20", tobjformat ) )
+                m_Format = "vtodo20";
+            break;
         }
 
         default:
-          continue;
+            return false;
         }
+        kDebug() << "Has objformat: " << m_Format;
     }
 
-//          if (!hasObjFormat) {
-// 			 kDebug() << "No objformat vcard30";
-//                  return false;
-//          }
 
-  osync_objtype_sink_set_userdata ( sink, this );
-  osync_objtype_sink_enable_hashtable ( sink , TRUE );
+    osync_objtype_sink_set_userdata ( sink, this );
+    osync_objtype_sink_enable_hashtable ( sink , TRUE );
+    
+    wrapSink ( sink );
 
-  return true;
+    return true;
 }
 
 Akonadi::Collection DataSink::collection() const
-  {
+{
+    kDebug();
     OSyncPluginConfig *config = osync_plugin_info_get_config ( pluginInfo() );
     Q_ASSERT ( config );
 
@@ -228,431 +170,367 @@ Akonadi::Collection DataSink::collection() const
     OSyncPluginResource *res = osync_plugin_config_find_active_resource ( config, objtype );
 
     if ( !res )
-      {
+    {
         error ( OSYNC_ERROR_MISCONFIGURATION, i18n ( "No active resource for type \"%1\" found", objtype ) );
         return Collection();
-      }
+    }
 
     const KUrl url = KUrl ( osync_plugin_resource_get_url ( res ) );
     // TODO osync_plugin_resource_get_mime() ;
     if ( url.isEmpty() )
-      {
+    {
         error ( OSYNC_ERROR_MISCONFIGURATION, i18n ( "Url for object type \"%1\" is not configured.", objtype ) );
         return Collection();
-      }
+    }
 
     return Collection::fromUrl ( url );
-  }
+}
 
 void DataSink::getChanges()
 {
-  kDebug() << " DataSink::getChanges() called";
-  OSyncError *oerror = 0;
+    kDebug();
+    kDebug() << " DataSink::getChanges() called";
+    OSyncError *oerror = 0;
 
-  OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink() );
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink() );
 
-  Collection col = collection(); // osync_objtype_sink_get_name(sink())
-  if ( !col.isValid() )
+    if ( !hashtable )
     {
-      kDebug() << "No collection";
-      osync_trace ( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print ( &oerror ) );
-      return;
+        kDebug() << "No hashtable";
+        osync_trace ( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print ( &oerror ) );
+        return;
+    }
+    
+    Collection col = collection(); // osync_objtype_sink_get_name(sink())
+    if ( !col.isValid() )
+    {
+        kDebug() << "No collection";
+        osync_trace ( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print ( &oerror ) );
+        return;
     }
 // FIXME
-  if ( getSlowSink() )
+    if ( getSlowSink() )
     {
-      kDebug() << "we're in the middle of slow-syncing...";
-      osync_trace ( TRACE_INTERNAL, "resetting hashtable" );
-      if ( ! osync_hashtable_slowsync ( hashtable, &oerror ) )
+        kDebug() << "we're in the middle of slow-syncing...";
+        osync_trace ( TRACE_INTERNAL, "resetting hashtable" );
+        if ( ! osync_hashtable_slowsync ( hashtable, &oerror ) )
         {
-          warning ( oerror );
-          osync_trace ( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print ( &oerror ) );
-          return;
+            warning ( oerror );
+            osync_trace ( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print ( &oerror ) );
+            return;
         }
     }
-  ItemFetchJob *job = new ItemFetchJob ( col );
-  job->fetchScope().fetchFullPayload ( true );
-  kDebug() << "Fetched FullPayload" ;
+    
+    ItemFetchJob *job = new ItemFetchJob ( col );
+    job->fetchScope().fetchFullPayload ( true );
+    kDebug() << "Fetched FullPayload" ;
 
-  QObject::connect ( job, SIGNAL ( itemsReceived ( const Akonadi::Item::List & ) ), this, SLOT ( slotItemsReceived ( const Akonadi::Item::List & ) ) );
-  QObject::connect ( job, SIGNAL ( result ( KJob * ) ), this, SLOT ( slotGetChangesFinished ( KJob * ) ) );
+    QObject::connect ( job, SIGNAL ( itemsReceived ( const Akonadi::Item::List & ) ), this, SLOT ( slotItemsReceived ( const Akonadi::Item::List & ) ) );
+    QObject::connect ( job, SIGNAL ( result ( KJob * ) ), this, SLOT ( slotGetChangesFinished ( KJob * ) ) );
 
-  // FIXME give me a real eventloop please!
-  if ( !job->exec() )
+    if ( !job->exec() )
     {
-      error ( OSYNC_ERROR_IO_ERROR, job->errorText() );
-      return;
+        error ( OSYNC_ERROR_IO_ERROR, job->errorText() );
+        return;
     }
 
-  success();
+    kDebug() << "success()";
+    success();
 }
 
 void DataSink::slotItemsReceived ( const Item::List &items )
 {
-  kDebug() << "retrieved" << items.count() << "items";
-  Q_FOREACH ( const Item& item, items )
-  {
+    kDebug();
+    kDebug() << "retrieved" << items.count() << "items";
+    Q_FOREACH ( const Item& item, items ) {
+        reportChange ( item );
+    }
+    kDebug() << "done";    
+}
+
+void DataSink::reportChange ( const Item& item )
+{
+    kDebug();
     kDebug() << "Id:" << item.id() << "\n";
     kDebug() << "Mime:" << item.mimeType() << "\n";
     kDebug() << "Revision:" << item.revision() << "\n";
     kDebug() << "StorageCollectionId:" << item.storageCollectionId() << "\n";
     kDebug() << "Url:" << item.url() << "\n";
-    reportChange ( item );
-  }
-}
+    kDebug() << "item.payloadData().data()" << "\n" << item.payloadData().data()  ;
 
-void DataSink::reportChange ( const Item& item )
-{
+    OSyncFormatEnv *formatenv = osync_plugin_info_get_format_env ( pluginInfo() );
+    OSyncObjFormat *format = osync_format_env_find_objformat ( formatenv, m_Format.toLatin1() );
 
-//     kDebug() << item.id() << "\n" ;
-  kDebug() << "item.payloadData().data():" << item.payloadData().data() << "\n" ;
+    OSyncError *error = 0;
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink() );
 
-  OSyncError *error = 0;
-  OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink() );
-
-
-  OSyncChange *change = osync_change_new ( &error );
-  if ( !change )
+    OSyncChange *change = osync_change_new ( &error );
+    if ( !change )
     {
-      osync_change_unref ( change );
-      warning ( error );
-      return;
+        osync_change_unref ( change );
+        warning ( error );
+        return;
     }
 
-  osync_change_set_uid ( change, QString::number ( item.id() ).toLatin1() );
-
-
-  OSyncFormatEnv *formatenv = osync_plugin_info_get_format_env ( pluginInfo() );
-  OSyncObjFormat *format = osync_format_env_find_objformat ( formatenv, formatName().toLatin1() );
-
-//
-  error = 0;
-  // Now you can set the data for the object
-  // Set the last argument to FALSE if the real data
-  // should be queried later in a "get_data" function
+    // Now you can set the data for the object
+    // Set the last argument to FALSE if the real data
+    // should be queried later in a "get_data" function
 //     odata = osync_data_new(NULL, 0, format, &error);
-  OSyncData *odata = osync_data_new ( item.payloadData().data() , item.payloadData().size(), format, &error );
-  if ( !odata )
+    QString cvtToString = item.payloadData().data() ;
+    OSyncData *odata = osync_data_new ( cvtToString.toLatin1().data() , cvtToString.size(), format, &error );
+    if ( !odata )
     {
-      osync_change_unref ( change );
-      return;
+        osync_data_unref ( odata );
+        return;
     }
 
-// //     osync_data_set_objtype( odata, osync_objtype_sink_get_name( sink() ) );
-//
-  osync_change_set_data ( change, odata );
-  osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
-  OSyncChangeType changetype = osync_hashtable_get_changetype ( hashtable, change );
-  osync_change_set_changetype ( change, changetype );
-  osync_hashtable_update_change ( hashtable, change );
-
-  osync_data_unref ( odata );
-
-  /* */
-  kDebug() << "changeid:" << osync_change_get_uid ( change )  << "; "
-  << "itemid:" << item.id() << "; "
-  << "revision:" << item.revision() << "; "
-  << "changetype:" << changetype << "; "
-  << "hash:" << osync_hashtable_get_hash ( hashtable, osync_change_get_uid ( change ) ) << "; "
-  << "objtype:" << osync_change_get_objtype ( change ) << "; "
-  << "objform:" << osync_objformat_get_name ( osync_change_get_objformat ( change ) ) << "; "
-  << "sinkname:" << osync_objtype_sink_get_name ( sink() );
-  /* */
-
-  if ( changetype != OSYNC_CHANGE_TYPE_UNMODIFIED )
-    osync_context_report_change ( context(), change );
-
-
+    osync_change_set_uid ( change,  item.remoteId().toLatin1() );
+    osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
+    osync_data_set_objtype( odata, osync_objtype_sink_get_name( sink() ) );
+    osync_change_set_data ( change, odata );
+    
+    osync_data_unref ( odata );
+   
+    OSyncChangeType changetype = osync_hashtable_get_changetype ( hashtable, change );
+    osync_change_set_changetype ( change, changetype );
+    osync_hashtable_update_change ( hashtable, change );
+    
+    if ( changetype != OSYNC_CHANGE_TYPE_UNMODIFIED )
+        osync_context_report_change ( context(), change );
+        
+    /* 
+    kDebug()
+    << "changeid:"    << osync_change_get_uid ( change )  << "; "
+    << "itemid:"      << item.id() << "; "
+    << "revision:"    << item.revision() << "; "
+    << "changetype:"  << changetype << "; "
+    << "hash:"        << osync_hashtable_get_hash ( hashtable, osync_change_get_uid ( change ) ) << "; "
+    << "objtype:"     << osync_change_get_objtype ( change ) << "; "
+    << "m_Format:"    << m_Format << "; "
+    << "objform:"     << osync_objformat_get_name ( osync_change_get_objformat ( change ) ) << "; "
+    << "sinkname:"    << osync_objtype_sink_get_name ( sink() );
+    */
+//     osync_error_unref(&error);
+//     osync_objformat_unref(format);
+//     osync_format_env_unref(formatenv);
 }
 
 void DataSink::slotGetChangesFinished ( KJob * )
 {
-  OSyncFormatEnv *formatenv = osync_plugin_info_get_format_env ( pluginInfo() );
-  OSyncObjFormat *format = osync_format_env_find_objformat ( formatenv, formatName().toLatin1() );
+    kDebug();
+    OSyncError *error = 0;
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink() );
+    OSyncList *u, *uids = osync_hashtable_get_deleted ( hashtable );
 
-  // after the items have been processed, see what's been deleted and send them to opensync
-  OSyncError *error = 0;
-//   FIXME:
-  OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink() );
-  OSyncList *u, *uids = osync_hashtable_get_deleted ( hashtable );
-//
-  for ( u = uids; u; u = u->next )
+    for ( u = uids; u; u = u->next )
     {
-      QString uid ( ( char * ) u->data );
-      kDebug() << "going to delete with uid:" << uid;
+        QString uid ( ( char * ) u->data );
+        kDebug() << "going to delete with uid:" << uid;
 
-      OSyncChange *change = osync_change_new ( &error );
-      if ( !change )
+        OSyncChange *change = osync_change_new ( &error );
+        if ( !change )
         {
-          osync_change_unref ( change );
-          warning ( error );
-          continue;
-        }
-//
-      osync_change_set_uid ( change, uid.toLatin1() );
-      osync_change_set_changetype ( change, OSYNC_CHANGE_TYPE_DELETED );
-      error = 0;
-      OSyncData *odata = osync_data_new ( NULL, 0, format, &error );
-      if ( !odata )
-        {
-          osync_change_unref ( change );
-          warning ( error );
-          continue;
+            osync_change_unref ( change );
+            warning ( error );
+            continue;
         }
 
-      osync_data_set_objtype ( odata, osync_objtype_sink_get_name ( sink() ) );
-      osync_change_set_data ( change, odata );
-      osync_data_unref ( odata );
-
-//         osync_context_report_change(context(), change);
-      osync_hashtable_update_change ( hashtable, change );
-
-      osync_change_unref ( change );
+        osync_change_set_uid ( change, uid.toLatin1() );
+        osync_change_set_changetype ( change, OSYNC_CHANGE_TYPE_DELETED );
+        osync_hashtable_update_change ( hashtable, change );
+// do we need reporting it         osync_context_report_change(context(), change); 
+        osync_change_unref ( change );
     }
-  osync_list_free ( uids );
+    osync_list_free ( uids );
 
-  kDebug() << "got all changes..";
-
+    kDebug() << "got all changes.";
 }
 
 void DataSink::commit ( OSyncChange *change )
 {
-  kDebug() << "change uid:" << osync_change_get_uid ( change );
-  kDebug() << "objtype:" << osync_change_get_objtype ( change );
-  kDebug() << "objform:" << osync_objformat_get_name ( osync_change_get_objformat ( change ) );
-  OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink() );
+//     kDebug();
+//     kDebug() << "change uid:" << osync_change_get_uid ( change );
+//     kDebug() << "objtype:" << osync_change_get_objtype ( change );
+//     kDebug() << "objform:" << osync_objformat_get_name ( osync_change_get_objformat ( change ) );
+    OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink() );
+    char *plain = 0;
+    osync_data_get_data ( osync_change_get_data ( change ), &plain, /*size*/0 );
+    QString str = QString::fromLatin1 ( plain );
+    QString id = QString::fromLatin1 ( osync_change_get_uid ( change ) );
+        Collection col = collection();
 
-  switch ( osync_change_get_changetype ( change ) )
+    switch ( osync_change_get_changetype ( change ) )
     {
     case OSYNC_CHANGE_TYPE_ADDED:
     {
-      const Item item = createItem ( change );
-      osync_change_set_uid ( change, QString::number ( item.id() ).toLatin1() );
-      osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
-      kDebug() << "ADDED:" << osync_change_get_uid ( change );
-      break;
+//         const Item item = createItem ( change );
+        if ( !col.isValid() ) // error handling
+            return;
+
+        Item item;
+        setPayload ( &item, str );
+        item.setRemoteId( id.toLatin1() );
+
+        ItemCreateJob *job = new Akonadi::ItemCreateJob ( item, col );
+        if ( ! job->exec() )
+            return;
+        item = job->item(); // handle !job->exec in return too..
+        if ( ! item.isValid() ) // error handling
+            return;
+        osync_change_set_uid ( change, item.remoteId().toLatin1() );
+        osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
+        break;
     }
 
     case OSYNC_CHANGE_TYPE_MODIFIED:
     {
-      const Item item = modifyItem ( change );
-      osync_change_set_uid ( change, QString::number ( item.id() ).toLatin1() );
-      osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
-      kDebug() << "MODIFIED:" << osync_change_get_uid ( change );
-      break;
+        Item item = fetchItem (  id );
+        setPayload ( &item, str );
+
+	if ( ! item.isValid() ) // TODO proper error handling
+            return;
+
+        ItemModifyJob *modifyJob = new Akonadi::ItemModifyJob ( item );
+        if ( ! modifyJob->exec() )
+            return;
+        else
+            item = modifyJob->item();
+
+        osync_change_set_uid ( change, item.remoteId().toLatin1() );
+        osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
+        break;
     }
 
     case OSYNC_CHANGE_TYPE_DELETED:
     {
-      deleteItem ( change );
-      kDebug() << "DELETED:" << osync_change_get_uid ( change );
-      break;
+        Item item = fetchItem ( id );
+        if ( ! item.isValid() ) // TODO proper error handling
+            return;
+        kDebug() << "delete with id: " << item.id();
+        ItemDeleteJob *job = new ItemDeleteJob( item );
+
+        if ( ! job->exec() ) {
+            kDebug() << "unable to delete item";
+            return;
+        }
+        break;
     }
 
     case OSYNC_CHANGE_TYPE_UNMODIFIED:
     {
-      kDebug() << "UNMODIFIED";
-      // should we do something here?
-      break;
+        kDebug() << "UNMODIFIED";
+        // should we do something here?
+        break;
     }
-
     default:
-      kDebug() << "got invalid changetype?";
+        kDebug() << "got invalid changetype?";
+        return;
     }
 
-  osync_hashtable_update_change ( hashtable, change );
-  success();
-}
-
-const Item DataSink::createAkonadiItem ( OSyncChange *change )
-{
-  char *plain = 0;
-  osync_data_get_data ( osync_change_get_data ( change ), &plain, /*size*/0 );
-  QString str = QString::fromLatin1 ( plain );
-  Akonadi::Item item;
-  setPayload ( &item, str.toUtf8() );
-  return item;
-}
-
-const Item DataSink::createItem ( OSyncChange *change )
-{
-  Collection col = collection();
-  if ( !col.isValid() ) // error handling
-    return Item();
-  kDebug() << "cuid:" << osync_change_get_uid ( change );
-
-  ItemCreateJob *job = new Akonadi::ItemCreateJob ( createAkonadiItem ( change ), col );
-
-  if ( ! job->exec() )
-    kDebug() << "creating an item failed";
-
-  return job->item(); // handle !job->exec in return too..
-}
-
-const Item DataSink::modifyItem ( OSyncChange *change )
-{
-  char *plain = 0;
-  osync_data_get_data ( osync_change_get_data ( change ), &plain, /*size*/0 );
-  QString str = QString::fromLatin1 ( plain );
-
-  QString id = QString ( osync_change_get_uid ( change ) );
-  Item item = fetchItem ( id );
-  if ( ! item.isValid() ) // TODO proper error handling
-    return Item();
-
-  //event.setMimeType( "application/x-vnd.akonadi.calendar.event" );
-  //Item newItem = createAkonadiItem( change );
-  setPayload ( &item, str.toUtf8() );
-  ItemModifyJob *modifyJob = new Akonadi::ItemModifyJob ( item );
-  if ( modifyJob->exec() )
-    {
-      kDebug() << "modification completed";
-      return modifyJob->item();
-    }
-  else
-    kDebug() << "unable to modify";
-
-
-  return Item();
-}
-
-void DataSink::deleteItem ( OSyncChange *change )
-{
-  QString id = QString ( osync_change_get_uid ( change ) );
-  Item item = fetchItem ( id );
-  if ( ! item.isValid() ) // TODO proper error handling
-    return;
-
-  kDebug() << "delete with id: " << item.id();
-  // TODO
-  /*ItemDeleteJob *job = new ItemDeleteJob( item );
-
-  if( job->exec() ) {
-   kDebug() << "item deleted";
-  }
-  else
-   kDebug() << "unable to delete item";*/
-
-  success(); // TODO
+    osync_hashtable_update_change ( hashtable, change );
+    success();
 }
 
 bool DataSink::setPayload ( Item *item, const QString &str )
 {
-  switch ( m_type )
+    kDebug();
+    switch ( m_type )
     {
     case Contacts:
     {
-      KABC::VCardConverter converter;
-      KABC::Addressee vcard = converter.parseVCard ( str.toUtf8() );
-      item->setMimeType ( KABC::Addressee::mimeType() );
-      item->setPayloadFromData ( vcard.toString().toLatin1() );
-      break;
+        kDebug() << "type = contacts";
+        KABC::VCardConverter converter;
+        KABC::Addressee vcard = converter.parseVCard ( str.toUtf8() );
+        item->setMimeType ( "text/directory" ); 
+        item->setPayload<KABC::Addressee> ( vcard );
+	kDebug() << "payload: " << vcard.toString().toUtf8();
+        break;
     }
     case Calendars:
     {
-      KCal::ICalFormat format;
-      KCal::Incidence *calEntry = format.fromString ( str.toUtf8() );
-      item->setMimeType ( "application/x-vnd.akonadi.calendar.event" );
-      item->setPayload<IncidencePtr> ( IncidencePtr ( calEntry->clone() ) );
+        kDebug() << "events";
+        KCal::ICalFormat format;
+        KCal::Incidence *calEntry = format.fromString ( str.toUtf8() );
+        item->setMimeType ( "application/x-vnd.akonadi.calendar.event" );
+        item->setPayload<IncidencePtr> ( IncidencePtr ( calEntry->clone() ) );
 
-      break;
+        break;
     }
     case Todos:
     {
-      KCal::ICalFormat format;
-      KCal::Incidence *todoEntry = format.fromString ( str.toUtf8() );
-      item->setMimeType ( "application/x-vnd.akonadi.calendar.todo" );
-      item->setPayload<IncidencePtr> ( IncidencePtr ( todoEntry->clone() ) );
+        kDebug() << "todos";
+        KCal::ICalFormat format;
+        KCal::Incidence *todoEntry = format.fromString ( str.toUtf8() );
+        item->setMimeType ( "application/x-vnd.akonadi.calendar.todo" );
+        item->setPayload<IncidencePtr> ( IncidencePtr ( todoEntry->clone() ) );
 
-      break;
+        break;
     }
     case Notes:
     {
-      kDebug() << "notes";
-      KCal::ICalFormat format;
-      KCal::Incidence *noteEntry = format.fromString ( str.toUtf8() );
-      item->setMimeType ( "application/x-vnd.kde.notes" );
-      item->setPayload<IncidencePtr> ( IncidencePtr ( noteEntry->clone() ) );
+        kDebug() << "notes";
+        KCal::ICalFormat format;
+        KCal::Incidence *noteEntry = format.fromString ( str.toUtf8() );
+        item->setMimeType ( "application/x-vnd.kde.notes" );
+        item->setPayload<IncidencePtr> ( IncidencePtr ( noteEntry->clone() ) );
 
-      break;
+        break;
     }
     case Journals:
     {
-      kDebug() << "journals";
-      KCal::ICalFormat format;
-      KCal::Incidence *journalEntry = format.fromString ( str.toUtf8() );
-      item->setMimeType ( "application/x-vnd.akonadi.calendar.journal" );
-      item->setPayload<IncidencePtr> ( IncidencePtr ( journalEntry->clone() ) );
+        kDebug() << "journals";
+        KCal::ICalFormat format;
+        KCal::Incidence *journalEntry = format.fromString ( str.toUtf8() );
+        item->setMimeType ( "application/x-vnd.akonadi.calendar.journal" );
+        item->setPayload<IncidencePtr> ( IncidencePtr ( journalEntry->clone() ) );
 
-      break;
+        break;
     }
     default:
-      // should not happen
-      return false;
+        // should not happen
+        return false;
     }
 
-  return true;
-}
-
-const QString DataSink::formatName()
-{
-  // FIXME -- this should be saved somewhere in the config,  why settign and checking here:
-  QString formatName;
-  switch ( m_type )
-    {
-    case Calendars:
-      formatName = "vevent20";
-      break;
-    case Contacts:
-      formatName = "vcard30";
-      break;
-    case Notes:
-      formatName = "vjournal";
-      break;
-    case Todos:
-      formatName = "vtodo20";
-      break;
-    default:
-      kDebug() << "invalid datasink type";
-      return QString();
-    }
-
-  return formatName;
+    return true;
 }
 
 const Item DataSink::fetchItem ( const QString& id )
 {
-  ItemFetchJob *fetchJob = new ItemFetchJob ( Item ( id ) );
-  fetchJob->fetchScope().fetchFullPayload();
+    kDebug();
+    Collection col = collection();
+    ItemFetchJob *fetchJob = new ItemFetchJob ( col );
+    fetchJob->fetchScope().fullPayload();
 
-  if ( fetchJob->exec() )
+    if ( fetchJob->exec() )
     {
-      foreach ( const Item &item, fetchJob->items() )
-      {
-        if ( QString::number ( item.id() ) == id )
-          {
-            kDebug() << "got item";
-            return item;
-          }
-      }
+        foreach ( const Item &item, fetchJob->items() )
+        {
+	  
+                kDebug() << "item " << item.remoteId();
+            if ( item.remoteId().toLatin1() == id ) 
+            {
+                kDebug() << "got item";
+                return item;
+            }
+        }
     }
 
-  // no such item found?
-  return Item();
+    // no such item found?
+    return Item();
 }
 
 void DataSink::syncDone()
 {
-  kDebug() << "sync for sink member done";
-  OSyncError *error = 0;
-  osync_objtype_sink_save_hashtable ( sink() , &error );
-  //TODO check for errors
-  if ( error )
+    kDebug() << "sync for sink member done";
+    OSyncError *error = 0;
+    osync_objtype_sink_save_hashtable ( sink() , &error );
+    //TODO check for errors
+    if ( error )
     {
-      warning ( error );
-      return;
+        warning ( error );
+        return;
     }
-  success();
+    success();
 }
 
 #include "datasink.moc"

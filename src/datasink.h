@@ -80,26 +80,17 @@ class DataSink : public SinkBase
     void reportChange( const Item & item );
 
     /**
-     * Creates a new item based on the data given by opensync.
-     */
-    const Item createItem( OSyncChange *change );
-    /**
-     * Modified an item based on the data given by opensync.
-     */
-    const Item modifyItem( OSyncChange *change );
-    /**
      * Deletes an item based on the data given by opensync.
      */
     void deleteItem( OSyncChange *change );
 
   private:
-    const Item createAkonadiItem( OSyncChange *change );
     const Item fetchItem( const QString& id );
-    const QString formatName();
     bool setPayload( Item *item, const QString &str );
+    QString m_Format;
 
   private:
-//     OSyncHashTable *m_hashtable;
+    OSyncHashTable *m_hashtable;
     int m_type;
 };
 

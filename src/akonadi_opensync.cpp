@@ -137,36 +137,31 @@ extern "C"
 
 // 	OSyncFormatEnv *formatEnv = osync_plugin_info_get_format_env(info);
         OSyncObjTypeSink *sinkEvent = osync_objtype_sink_new(mType, error);
-	OSyncPluginResource *res = NULL;
+        OSyncPluginResource *res = NULL;
         foreach ( const Akonadi::Collection &col, colsCal ) {
             kDebug() << "processing resource " << col.name() << col.contentMimeTypes();
             kDebug() << "                    " << col.name() << col.url().url();
 
             res = osync_plugin_config_find_active_resource(config ,mType);
-            if ( res )
-	      osync_plugin_resource_enable(res,FALSE);
-	      //TODO add some logic here (compare names etc)
-// //                 osync_plugin_config_remove_resource(config,res);
-// 
-// 	      res = 
-// 	    }
-// 	    if ( ! res) 
-	      res = osync_plugin_resource_new( error );
-//             osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( "vevent20", error ) );
+            if ( ! res) {
+                res = osync_plugin_resource_new( error );
+                osync_plugin_resource_enable(res,FALSE);
+                continue;
+            }
             osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( objFormat, error ) );
-
-            osync_plugin_resource_enable(res,TRUE);
             osync_plugin_resource_set_objtype( res, mType );
             QString myname = toXml(col.name());
             osync_plugin_resource_set_name( res, myname.toUtf8() ); // TODO: full path instead of the name
             osync_plugin_resource_set_url( res, col.url().url().toLatin1() );
 
             osync_plugin_resource_set_mime( res, mimeType );
-            osync_plugin_config_add_resource( config, res );
+            if (osync_plugin_resource_is_enabled(res)) {
+// 	      osync_plugin_config_add_resource( config, res );
+                osync_objtype_sink_add_objformat_sink(sinkEvent,osync_objformat_sink_new (objFormat, error));
+                osync_objtype_sink_set_enabled( sinkEvent, TRUE );
+                osync_objtype_sink_set_available( sinkEvent, TRUE );
+            }
         }
-        osync_objtype_sink_add_objformat_sink(sinkEvent,osync_objformat_sink_new (objFormat, error));
-        osync_objtype_sink_set_enabled( sinkEvent, TRUE );
-        osync_objtype_sink_set_available( sinkEvent, TRUE );
 //         osync_objtype_sink_add_objformat_sink( sinkEvent, "vevent20" );
         osync_plugin_info_add_objtype( info, sinkEvent );
 
@@ -209,7 +204,7 @@ extern "C"
 	  kDebug() << "NO support for vjournal";
 // 	  return false;
         // fetch all address books
-        if ( ! testSupport(info, config, "contact", KABC::Addressee::mimeType().toLatin1(), "vcard30" ,error) ) 
+        if ( ! testSupport(info, config, "contact", "application/x-vnd.kde.contactgroup", "vcard30" ,error) ) 
 	  kDebug() << "NO support for vcard30";
 // 	  return false;
         // fetch all notes

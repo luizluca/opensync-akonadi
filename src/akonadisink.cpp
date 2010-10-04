@@ -3,7 +3,7 @@
     Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
 
     $Id$
-    
+
     This library is free software; you can redistribute it and/or modify it
     under the terms of the GNU Library General Public License as published by
     the Free Software Foundation; either version 2 of the License, or (at your
@@ -70,7 +70,7 @@ void AkonadiSink::connect()
         osync_trace(TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, "Could not start Akonadi.");
         return;
     }
-  success();
+    success();
     osync_trace(TRACE_EXIT, "%s", __PRETTY_FUNCTION__);
 }
 
