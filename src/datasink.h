@@ -75,7 +75,9 @@ class DataSink : public SinkBase
     void reportChange( const Item& item, const QString& format );
 
     /**
-     * Reimplement in subclass to provide data about changes to opensync. Note, that you must call DataSink::reportChange( Item, QString, int ) after you have organized data to be send to opensync.
+     * Reimplement in subclass to provide data about changes to opensync.
+     * Note, that you must call DataSink::reportChange( Item, QString, int ) 
+     * after you have organized data to be send to opensync.
      */
     void reportChange( const Item & item );
 

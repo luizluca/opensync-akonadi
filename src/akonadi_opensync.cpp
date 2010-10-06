@@ -88,15 +88,15 @@ extern "C"
             else if ( sinkName == "contact" )
                 ds = new DataSink( DataSink::Contacts );
 //       FIXME: implement todos an journal (notes)
-            else if ( sinkName == "journal" )
+            else if ( sinkName == "note" )
                 ds = new DataSink( DataSink::Journals );
             else if ( sinkName == "todo" )
                 ds = new DataSink( DataSink::Todos );
-            else if ( sinkName == "note" )
-                ds = new DataSink( DataSink::Notes );
+//             else if ( sinkName == "note" )
+//                 ds = new DataSink( DataSink::Notes );
             else
                 continue;
-	    
+
             if ( !ds->initialize( plugin, info, sink, error ) ) {
                 delete ds;
                 delete mainSink;
@@ -108,13 +108,16 @@ extern "C"
         return mainSink;
 
     }
+    
+    
     //FIXME: this probably a bug in opoensync
     //		replace &
     static QString toXml(QString str) {
-      str.replace("<","&lt;").replace(">","&gt;").replace("&","and");
-      return str;
+        str.replace("<","&lt;").replace(">","&gt;").replace("&","and");
+        return str;
     }
     
+
     static osync_bool testSupport(OSyncPluginInfo *info,
                                   OSyncPluginConfig *config,
                                   const char* mType,
@@ -144,28 +147,37 @@ extern "C"
 
             res = osync_plugin_config_find_active_resource(config ,mType);
             if ( ! res) {
-                res = osync_plugin_resource_new( error );
-                osync_plugin_resource_enable(res,FALSE);
+//                 res = osync_plugin_resource_new( error );
+//                 osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( objFormat, error ) );
+//                 osync_plugin_resource_enable(res,FALSE);
+// 	        osync_plugin_config_add_resource( config, res );
+                kDebug() << "No support for " << mType << " disabled";
+// 		osync_objtype_sink_set_enabled( sinkEvent, FALSE ); 
+            osync_objtype_sink_set_enabled( sinkEvent, FALSE );
+            osync_objtype_sink_set_available( sinkEvent, FALSE );
                 continue;
             }
-            osync_plugin_resource_add_objformat_sink( res, osync_objformat_sink_new( objFormat, error ) );
+
             osync_plugin_resource_set_objtype( res, mType );
-            QString myname = toXml(col.name());
+            QString myname =QString::fromLatin1( osync_plugin_resource_get_name( res ) ); //
+	    if ( myname.size() > 0 )
+	      myname.append(';').append(toXml(col.name()));
+	    else
+	      myname = toXml(col.name());
             osync_plugin_resource_set_name( res, myname.toUtf8() ); // TODO: full path instead of the name
+	    //
             osync_plugin_resource_set_url( res, col.url().url().toLatin1() );
-
             osync_plugin_resource_set_mime( res, mimeType );
-            if (osync_plugin_resource_is_enabled(res)) {
-// 	      osync_plugin_config_add_resource( config, res );
-                osync_objtype_sink_add_objformat_sink(sinkEvent,osync_objformat_sink_new (objFormat, error));
-                osync_objtype_sink_set_enabled( sinkEvent, TRUE );
-                osync_objtype_sink_set_available( sinkEvent, TRUE );
-            }
+//             if (osync_plugin_resource_is_enabled(res)) {
+//                 osync_plugin_resource_set_preferred_format( res, objFormat );
+//             }
+            osync_plugin_resource_enable(res,TRUE);  
+            osync_objtype_sink_set_enabled( sinkEvent, TRUE );
+            osync_objtype_sink_set_available( sinkEvent, TRUE );
         }
-//         osync_objtype_sink_add_objformat_sink( sinkEvent, "vevent20" );
+        
         osync_plugin_info_add_objtype( info, sinkEvent );
-
-        return TRUE;
+	return TRUE;
     }
 
     static osync_bool akonadi_discover(OSyncPluginInfo *info, void *userdata, OSyncError **error )
@@ -181,37 +193,30 @@ extern "C"
         }
         if ( !Akonadi::Control::start() )
             return false;
+
+        /*
+        Check for support of following types
+        text/directory - this is the addressbook
+        application/x-vnd.kde.contactgroup - is contact group ... I'm not sure about it ATM
+        text/calendar - this is general mime for the whole calendar, but we are interested in the details
+        application/x-vnd.akonadi.calendar.event,
+        application/x-vnd.akonadi.calendar.todo,
+        application/x-vnd.akonadi.calendar.journal,
+        application/x-vnd.akonadi.calendar.freebusy - this will be most probably ignored, so not checkign for it
+        */
 	
-	/*
-	Check for support of following types
-	
-	text/calendar - this is general mime for the whole calendar, but we are interested in the details
-	application/x-vnd.akonadi.calendar.event, 
-	application/x-vnd.akonadi.calendar.todo, 
-	application/x-vnd.akonadi.calendar.journal, 
-	application/x-vnd.akonadi.calendar.freebusy - this will be most probably ignored, so not checkign for it
-	*/
-	
-        if ( ! testSupport(info, config, "event", "application/x-vnd.akonadi.calendar.event", "vevent20" ,error) ) 
-	  kDebug() << "NO support for vevent20";
-// 	  return false;
-        	
-        if ( ! testSupport(info, config, "todo", "application/x-vnd.akonadi.calendar.todo", "vtodo10" ,error) ) 
-	  kDebug() << "NO support for vtodo10";
-// 	  return false;
-	
-        if ( ! testSupport(info, config, "journal", "application/x-vnd.akonadi.calendar.journal", "vjournal" ,error) ) 
-	  kDebug() << "NO support for vjournal";
-// 	  return false;
-        // fetch all address books
-        if ( ! testSupport(info, config, "contact", "application/x-vnd.kde.contactgroup", "vcard30" ,error) ) 
-	  kDebug() << "NO support for vcard30";
-// 	  return false;
-        // fetch all notes
-        if ( ! testSupport(info, config, "note", "application/x-vnd.kde.notes", "vnote11" ,error) ) 
-	  kDebug() << "NO support for vnote11";
-// 	  return false;
-        // set information about the peer (KDE itself)
+// 	testSupport(info, config, "contact", "application/x-vnd.kde.contactgroup", "vcard20" ,error);
+	testSupport(info, config, "contact", "application/x-vnd.kde.contactgroup", "vcard30" ,error);
+
+        testSupport(info, config, "event", "application/x-vnd.akonadi.calendar.event", "vevent20" ,error);
+
+//         testSupport(info, config, "todo", "application/x-vnd.akonadi.calendar.todo", "vtodo10" ,error);
+        testSupport(info, config, "todo", "application/x-vnd.akonadi.calendar.todo", "vtodo20" ,error);
+
+        testSupport(info, config, "note", "application/x-vnd.akonadi.calendar.journal", "vjournal" ,error);
+// 	testSupport(info, config, "note", "application/x-vnd.kde.notes", "vnote11" ,error);
+
+	// set information about the peer (KDE itself)
         {
             OSyncVersion *version = osync_version_new(error);
             osync_version_set_plugin(version, "Akonadi-sync");
@@ -229,7 +234,7 @@ extern "C"
         osync_trace(TRACE_ENTRY, "%s(%p)", __func__, userdata);
         kDebug();
         AkonadiSink *sink = reinterpret_cast<AkonadiSink*>( userdata );
-	sink->disconnect();
+        sink->disconnect();
 //         delete sink;
         delete kcd;
         kcd = 0;

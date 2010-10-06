@@ -1,7 +1,7 @@
 /*
     Copyright (c) 2008 Volker Krause <vkrause@kde.org>
     Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
-    
+
     $Id$
 
     This library is free software; you can redistribute it and/or modify it
@@ -34,19 +34,19 @@
  */
 class SinkBase : public QObject
 {
-  Q_OBJECT
+    Q_OBJECT
 
-  public:
+public:
     enum Feature {
-      Connect = 1,
-      Disconnect = 2,
-      GetChanges = 4,
-      Commit = 8,
-      Write = 16,
-      CommittedAll = 32,
-      Read = 64,
-      BatchCommit = 128,
-      SyncDone = 256
+        Connect = 1,
+        Disconnect = 2,
+        GetChanges = 4,
+        Commit = 8,
+        Write = 16,
+        CommittedAll = 32,
+        Read = 64,
+        BatchCommit = 128,
+        SyncDone = 256
     };
 
     SinkBase( int features );
@@ -61,30 +61,36 @@ class SinkBase : public QObject
     virtual void commitAll();
     virtual void syncDone();
 
-    OSyncContext* context() const { return mContext; }
+    OSyncContext* context() const {
+        return mContext;
+    }
     void setContext( OSyncContext *context );
 
-    OSyncPluginInfo *pluginInfo() const { return mPluginInfo; }
+    OSyncPluginInfo *pluginInfo() const {
+        return mPluginInfo;
+    }
     void setPluginInfo( OSyncPluginInfo *info );
     void setSlowSink (osync_bool);
     osync_bool getSlowSink ();
 
-  protected:
+protected:
     void success() const;
     void error( OSyncErrorType type, const QString &msg ) const;
     void warning( OSyncError *error ) const;
     void wrapSink( OSyncObjTypeSink* sink );
-    OSyncObjTypeSink* sink() const { return mSink; }
+    OSyncObjTypeSink* sink() const {
+        return mSink;
+    }
     bool m_isContact, m_isEvent, m_isTodo, m_isNote, m_isJournal; //TODO intended to be private
 
-  private:
+private:
 
     mutable OSyncContext *mContext;
     OSyncObjTypeSink *mSink;
     OSyncPluginInfo *mPluginInfo;
 //     what do we have and what can we do
-    bool m_canConnect, m_canDisconnect, m_canCommit, m_canCommitAll, 
-	 m_canGetChanges, m_canWrite, m_canRead, m_canSyncDone;
+    bool m_canConnect, m_canDisconnect, m_canCommit, m_canCommitAll,
+    m_canGetChanges, m_canWrite, m_canRead, m_canSyncDone;
 //  unused   bool  m_canCommitRead, m_canBatchCommit;
     osync_bool m_SlowSync;
 };

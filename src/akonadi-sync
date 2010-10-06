@@ -43,17 +43,10 @@
       <Enabled>1</Enabled>
       <Formats>
         <Format>
-          <Name>vjournal</Name>
-        </Format>
-      </Formats>
-      <ObjType>journal</ObjType>
-      <Url>default</Url>
-    </Resource>
-    <Resource>
-      <Enabled>1</Enabled>
-      <Formats>
-        <Format>
           <Name>vnote11</Name>
+        </Format>
+        <Format>
+          <Name>vjournal</Name>
         </Format>
       </Formats>
       <ObjType>note</ObjType>

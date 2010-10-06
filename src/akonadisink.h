@@ -30,9 +30,9 @@
  */
 class AkonadiSink : public SinkBase
 {
-  Q_OBJECT
+    Q_OBJECT
 
-  public:
+public:
     AkonadiSink();
     ~AkonadiSink();
 
