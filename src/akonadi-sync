@@ -5,11 +5,9 @@
       <Enabled>1</Enabled>
       <Formats>
         <Format>
-          <Config>VCARD_EXTENSION=KDE</Config>
           <Name>vcard21</Name>
         </Format>
         <Format>
-          <Config>VCARD_EXTENSION=KDE</Config>
           <Name>vcard30</Name>
         </Format>
       </Formats>
@@ -32,6 +30,9 @@
     <Resource>
       <Enabled>1</Enabled>
       <Formats>
+        <Format>
+          <Name>vtodo10</Name>
+        </Format>
         <Format>
           <Name>vtodo20</Name>
         </Format>

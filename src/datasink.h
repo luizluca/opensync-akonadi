@@ -36,6 +36,8 @@
 #include <opensync/opensync-data.h>
 #include <opensync/opensync-format.h>
 
+#include <KUrl>
+
 #include <boost/shared_ptr.hpp>
 
 using namespace Akonadi;
@@ -48,7 +50,7 @@ class DataSink : public SinkBase
   Q_OBJECT
 
   public:
-    enum Type { Calendars = 0, Contacts, Todos,  Notes, Journals };
+    enum Type { Calendars = 0, Contacts, Todos,  Notes };
 
     DataSink( int type );
     ~DataSink();
@@ -64,6 +66,7 @@ class DataSink : public SinkBase
     void slotItemsReceived( const Akonadi::Item::List & );
 
   protected:
+
     /**
      * Returns the collection we are supposed to sync with.
      */
@@ -89,11 +92,14 @@ class DataSink : public SinkBase
   private:
     const Item fetchItem( const QString& id );
     bool setPayload( Item *item, const QString &str );
-    QString m_Format;
 
   private:
     OSyncHashTable *m_hashtable;
     int m_type;
+    QString m_Format;
+    bool m_Enabled;
+    QString m_Url;
+    QString m_MimeType;
 };
 
 #endif

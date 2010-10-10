@@ -4,7 +4,14 @@ OpenSync Framework
 OpenSync is a plugin-based application that basically provides a framework
 for syncing groups which can have two or more members. 
 
-This is the Akonadi (KDE 4.x) PIM synchronisation framework
+This is the Akonadi (KDE 4.x) PIM synchronisation framework.
+It provides sync ability with KDE > 4.5 using the akonadi interface.
+
+Important
+=========
+
+Currently Calendar does not work.
+
 
 Requirements
 ============
@@ -13,13 +20,27 @@ Requirements
 
 Installation
 ============
-export PKG_CONFIG_PATH=/opt/custom/opensync/lib/pkgconfig
+export PKG_CONFIG_PATH=/path/to/opensync/installation_prefix/lib/pkgconfig
 
 mkdir build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX=$prefix /path/to/opensync/source/
+cmake -DCMAKE_INSTALL_PREFIX=$installation_prefix /path/to/opensync/source/
 make
 make install
+
+Usage
+============
+
+1. After installation configure the plugin with "--configure" option. 
+   (I'm planning to make this step optional)
+2. Discover supported features on both sides (sync members and akonadi) 
+   with "--discover" option. This step will discover sync features (supported 
+   formats) and akonadi collection. They will be available in the configuration 
+   file for further setup. 
+3. Reconfigure the plugin with "--configure" option. Most likely you will need 
+   to enable or disable sync with given collection represented as a ressource in
+   the configuration file.
+4. Sync with the "--sync" or similar option
 
 Links
 =====

@@ -219,27 +219,27 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
 
     if ( m_canConnect ) {
         osync_objtype_sink_set_connect_func(sink, connect_wrapper);
-        osync_objtype_sink_set_connect_timeout(sink, 5);
+        osync_objtype_sink_set_connect_timeout(sink, 15);
     }
     if ( m_canDisconnect ) {
         osync_objtype_sink_set_disconnect_func(sink, disconnect_wrapper);
-        osync_objtype_sink_set_disconnect_timeout(sink, 5);
+        osync_objtype_sink_set_disconnect_timeout(sink, 15);
     }
     if ( m_canGetChanges ) {
         osync_objtype_sink_set_get_changes_func(sink, get_changes_wrapper);
-        osync_objtype_sink_set_getchanges_timeout(sink, 5);
+        osync_objtype_sink_set_getchanges_timeout(sink, 15);
     }
     if ( m_canCommit ) {
         osync_objtype_sink_set_commit_func(sink, commit_wrapper);
-        osync_objtype_sink_set_commit_timeout(sink, 5);
+        osync_objtype_sink_set_commit_timeout(sink, 15);
     }
     if ( m_canCommitAll ) {
         osync_objtype_sink_set_committed_all_func(sink, commitAll_wrapper);
-        osync_objtype_sink_set_committedall_timeout(sink, 5);
+        osync_objtype_sink_set_committedall_timeout(sink, 15);
     }
     if ( m_canSyncDone ) {
         osync_objtype_sink_set_sync_done_func(sink, sync_done_wrapper);
-        osync_objtype_sink_set_syncdone_timeout(sink, 5);
+        osync_objtype_sink_set_syncdone_timeout(sink, 15);
     }
 //   TODO: check if relevant for akonadi
 //   if ( m_canWrite )
