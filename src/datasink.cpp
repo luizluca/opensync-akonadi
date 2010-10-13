@@ -37,9 +37,9 @@
 #include <kabc/vcardformat.h>
 
 // TODO
-// notes includes
-// todos includes
-// journals includes
+// notes, todos, journals & includes are done by icalformat
+// I am not quite sure about it, but I think
+// this needs to be checked when working on todos and notes
 
 #include <KDebug>
 #include <KLocale>
@@ -74,7 +74,7 @@ bool DataSink::initialize ( OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncO
     kDebug() << "initializing" << osync_objtype_sink_get_name ( sink );
     Q_UNUSED ( plugin );
     Q_UNUSED ( info );
-    Q_UNUSED ( error ); 
+    Q_UNUSED ( error );
 
 
     OSyncPluginConfig *config = osync_plugin_info_get_config ( info );
@@ -86,21 +86,22 @@ bool DataSink::initialize ( OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncO
 
 // FIXME enable checks on sync/commit etc!!
     OSyncPluginResource *resource = osync_plugin_config_find_active_resource ( config, osync_objtype_sink_get_name ( sink ) );
-    if ( resource && ! osync_plugin_resource_is_enabled(resource) ) {
-//         osync_error_set( error, OSYNC_ERROR_MISCONFIGURATION, i18n ( "No active resource for type \"%s\" found", m_type ).toLatin1() );
+    if ( ! resource || ! osync_plugin_resource_is_enabled(resource) ) {
         m_Enabled = FALSE;
         return false;
-    } else               
+    } else
         m_Enabled = TRUE;
-    
+
     m_Url = osync_plugin_resource_get_url ( resource );
 
     OSyncList *objfrmtList = osync_plugin_resource_get_objformat_sinks ( resource );
+    const char *preferred = osync_plugin_resource_get_preferred_format(resource);
     for ( OSyncList *r = objfrmtList;r;r = r->next )
     {
         OSyncObjFormatSink *objformatsink = ( OSyncObjFormatSink * ) r->data;
         const char* tobjformat = osync_objformat_sink_get_objformat ( objformatsink );
 
+	// TODO how can I negotiate format ... is this here enough?
         switch ( m_type )
         {
         case Contacts:
@@ -142,14 +143,19 @@ bool DataSink::initialize ( OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncO
         default:
             return false;
         }
-    
-        kDebug() << "Has objformat: " << m_Format;
     }
-        
+
+    if ( ! preferred || strcmp(preferred,m_Format.toLatin1() ) )
+        osync_plugin_resource_set_preferred_format( resource, m_Format.toLatin1() );
+
+    kDebug() << "Has objformat: " << m_Format;
+
     wrapSink ( sink );
 
+    osync_objtype_sink_set_enabled ( sink, true );
+    osync_objtype_sink_set_available ( sink, true );
     osync_objtype_sink_set_userdata ( sink, this );
-    osync_objtype_sink_enable_hashtable ( sink , TRUE );
+    osync_objtype_sink_enable_hashtable ( sink , true );
 
     return true;
 }
@@ -157,9 +163,9 @@ bool DataSink::initialize ( OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncO
 Akonadi::Collection DataSink::collection() const
 {
     kDebug();
-    
-    const KUrl url = KUrl ( m_Url);
-    
+
+    const KUrl url = KUrl ( m_Url );
+
     if ( url.isEmpty() )
     {
         error ( OSYNC_ERROR_MISCONFIGURATION, i18n ( "Url for object type \"%s\" is not configured.",  m_type) );
@@ -186,37 +192,37 @@ void DataSink::getChanges()
     }
 
     Akonadi::Collection col = collection() ;
-        if ( !col.isValid() )
+    if ( !col.isValid() )
+    {
+        kDebug() << "No collection";
+        osync_trace ( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print ( &oerror ) );
+        return;
+    }
+// FIXME: I don't understand this completely well
+    if ( getSlowSink() )
+    {
+        kDebug() << "we're in the middle of slow-syncing...";
+        osync_trace ( TRACE_INTERNAL, "resetting hashtable" );
+        if ( ! osync_hashtable_slowsync ( hashtable, &oerror ) )
         {
-            kDebug() << "No collection";
+            warning ( oerror );
             osync_trace ( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print ( &oerror ) );
             return;
         }
-// FIXME
-        if ( getSlowSink() )
-        {
-            kDebug() << "we're in the middle of slow-syncing...";
-            osync_trace ( TRACE_INTERNAL, "resetting hashtable" );
-            if ( ! osync_hashtable_slowsync ( hashtable, &oerror ) )
-            {
-                warning ( oerror );
-                osync_trace ( TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, osync_error_print ( &oerror ) );
-                return;
-            }
-        }
-        
-        ItemFetchJob *job = new ItemFetchJob ( col );
-	job->fetchScope().fetchFullPayload();
-        kDebug() << "Fetched full payload";
+    }
 
-        QObject::connect ( job, SIGNAL ( itemsReceived ( const Akonadi::Item::List & ) ), this, SLOT ( slotItemsReceived ( const Akonadi::Item::List & ) ) );
-        QObject::connect ( job, SIGNAL ( result ( KJob * ) ), this, SLOT ( slotGetChangesFinished ( KJob * ) ) );
+    ItemFetchJob *job = new ItemFetchJob ( col );
+    job->fetchScope().fetchFullPayload();
+    kDebug() << "Fetched full payload";
 
-        if ( !job->exec() )
-        {
-            error ( OSYNC_ERROR_IO_ERROR, job->errorText() );
-            return;
-        }
+    QObject::connect ( job, SIGNAL ( itemsReceived ( const Akonadi::Item::List & ) ), this, SLOT ( slotItemsReceived ( const Akonadi::Item::List & ) ) );
+    QObject::connect ( job, SIGNAL ( result ( KJob * ) ), this, SLOT ( slotGetChangesFinished ( KJob * ) ) );
+
+    if ( !job->exec() )
+    {
+        error ( OSYNC_ERROR_IO_ERROR, job->errorText() );
+        return;
+    }
 
     kDebug() << "success()";
     success();
@@ -226,9 +232,8 @@ void DataSink::slotItemsReceived ( const Item::List &items )
 {
     kDebug();
     kDebug() << "retrieved" << items.count() << "items";
-    Q_FOREACH ( const Item& item, items ) {
-        reportChange ( item );
-    }
+    Q_FOREACH ( const Item& item, items )
+	reportChange ( item );
     kDebug() << "done";
 }
 
@@ -255,11 +260,19 @@ void DataSink::reportChange ( const Item& item )
         warning ( error );
         return;
     }
+//    TODO Do I need to filter here some items
+//     osync_change_get_objformat( change );
+//     if ( strcmp(m_MimeType.toLatin1(),item.mimeType().toLatin1()) ) {
+//         osync_change_unref ( change );
+// //         warning ( error );
+//         return;
+//     }
+
 
     // Now you can set the data for the object
     // Set the last argument to FALSE if the real data
     // should be queried later in a "get_data" function
-    QString cvtToString = item.payloadData().data() ;
+    QString cvtToString = QString ( item.payloadData().data() );
     OSyncData *odata = osync_data_new ( cvtToString.toLatin1().data() , cvtToString.size(), format, &error );
     if ( !odata )
     {
@@ -334,8 +347,8 @@ void DataSink::slotGetChangesFinished ( KJob * )
         osync_data_set_objtype( data, osync_objtype_sink_get_name( sink() ) );
         osync_change_set_data( change, data );
         osync_hashtable_update_change ( hashtable, change );
-
         osync_context_report_change ( context(), change );
+
         osync_change_unref ( change );
         osync_data_unref(data);
     }
@@ -344,15 +357,34 @@ void DataSink::slotGetChangesFinished ( KJob * )
     kDebug() << "got all changes.";
 }
 
+//     NOTE "application/x-vnd.kde.contactgroup" is used for contact groups ... we can use it probably later
+
+QString DataSink::getMimeWithFormat ( OSyncObjFormat * format ) {
+    const char* name = osync_objformat_get_name (format);
+    if (!strcmp(name,"vcard21") || !strcmp(name,"vcard30") )
+        return "text/directory";
+    else if (!strcmp(name,"vevent10") || !strcmp(name,"vevent10") )
+        return "application/x-vnd.akonadi.calendar.event";
+    else if (!strcmp(name,"vtodo10") || !strcmp(name,"vtodo20"))
+        return "application/x-vnd.akonadi.calendar.todo";
+    else if (!strcmp(name,"vnote11") )
+        return "application/x-vnd.kde.notes";
+    else if (!strcmp(name,"vjournal"))
+        return "application/x-vnd.akonadi.calendar.journal";
+    else
+        return false;
+}
+
 void DataSink::commit ( OSyncChange *change )
 {
     kDebug();
-    
+
     OSyncHashTable *hashtable = osync_objtype_sink_get_hashtable ( sink() );
     char *plain = 0;
     osync_data_get_data ( osync_change_get_data ( change ), &plain, /*size*/0 );
     QString str = QString::fromLatin1 ( plain );
     QString id = QString::fromLatin1 ( osync_change_get_uid ( change ) );
+    QString mimeType = getMimeWithFormat(osync_change_get_objformat(change));
 
     kDebug() << "change uid:" << id;
     kDebug() << "objform:" << osync_objformat_get_name ( osync_change_get_objformat ( change ) );
@@ -361,95 +393,96 @@ void DataSink::commit ( OSyncChange *change )
 
     Akonadi::Collection col = collection();
 
-        switch ( osync_change_get_changetype ( change ) )
-        {
-        case OSYNC_CHANGE_TYPE_ADDED:
-        {
+    switch ( osync_change_get_changetype ( change ) )
+    {
+    case OSYNC_CHANGE_TYPE_ADDED:
+    {
 
-            if ( !col.isValid() ) {
-                error( OSYNC_ERROR_GENERIC, "Invalid collction.");
-                return;
-            }
-
-            Item item;
-            setPayload ( &item, str );
-            item.setRemoteId( id.toLatin1() );
-
-            ItemCreateJob *job = new Akonadi::ItemCreateJob ( item, col );
-            if ( ! job->exec() ) {
-                error( OSYNC_ERROR_GENERIC, "Unable to create job for item.");
-                return;
-            }
-
-            item = job->item(); // handle !job->exec in return too..
-            if ( ! item.isValid() ) {
-                error( OSYNC_ERROR_GENERIC, "Unable to fetch item.");
-                return;
-            }
-            osync_change_set_uid ( change, item.remoteId().toLatin1() );
-            osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
-            break;
-        }
-
-        case OSYNC_CHANGE_TYPE_MODIFIED:
-        {
-            Item item = fetchItem (  id );
-            setPayload ( &item, str );
-
-            if ( ! item.isValid() ) {
-                error( OSYNC_ERROR_GENERIC, "Unable to fetch item.");
-                return;
-            }
-
-            ItemModifyJob *modifyJob = new Akonadi::ItemModifyJob ( item );
-            if ( ! modifyJob->exec() ) {
-                error ( OSYNC_ERROR_GENERIC, "Unable to fetch item.");
-                return;
-            }
-
-            item = modifyJob->item();
-
-            osync_change_set_uid ( change, item.remoteId().toLatin1() );
-            osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
-            break;
-        }
-
-        case OSYNC_CHANGE_TYPE_DELETED:
-        {
-            Item item = fetchItem ( id );
-            if ( ! item.isValid() ) {
-                error( OSYNC_ERROR_GENERIC, "Unable to fetch item");
-                return;
-            }
-
-            ItemDeleteJob *job = new ItemDeleteJob( item );
-            if ( ! job->exec() ) {
-                error( OSYNC_ERROR_GENERIC, "Unable to delete item");
-                return;
-            }
-            break;
-        }
-
-        case OSYNC_CHANGE_TYPE_UNMODIFIED:
-        {
-            kDebug() << "UNMODIFIED";
-            // should we do something here?
-            break;
-        }
-        default:
-            kDebug() << "got invalid changetype?";
-            error(OSYNC_ERROR_GENERIC, "got invalid changetype");
+        if ( !col.isValid() ) {
+            error( OSYNC_ERROR_GENERIC, "Invalid collction.");
             return;
         }
 
-        osync_hashtable_update_change ( hashtable, change );
+        Item item;
+        setPayload ( &item, mimeType, str );
+        item.setRemoteId( id.toLatin1() );
+
+        ItemCreateJob *job = new Akonadi::ItemCreateJob ( item, col );
+        if ( ! job->exec() ) {
+            error( OSYNC_ERROR_GENERIC, "Unable to create job for item.");
+            return;
+        }
+
+        item = job->item(); // handle !job->exec in return too..
+        if ( ! item.isValid() ) {
+            error( OSYNC_ERROR_GENERIC, "Unable to fetch item.");
+            return;
+        }
+        osync_change_set_uid ( change, item.remoteId().toLatin1() );
+        osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
+        break;
+    }
+
+    case OSYNC_CHANGE_TYPE_MODIFIED:
+    {
+        Item item = fetchItem (  id );
+        setPayload ( &item, mimeType, str );
+
+        if ( ! item.isValid() ) {
+            error( OSYNC_ERROR_GENERIC, "Unable to fetch item.");
+            return;
+        }
+
+        ItemModifyJob *modifyJob = new Akonadi::ItemModifyJob ( item );
+        if ( ! modifyJob->exec() ) {
+            error ( OSYNC_ERROR_GENERIC, "Unable to fetch item.");
+            return;
+        }
+
+        item = modifyJob->item();
+
+        osync_change_set_uid ( change, item.remoteId().toLatin1() );
+        osync_change_set_hash ( change, QString::number ( item.revision() ).toLatin1() );
+        break;
+    }
+
+    case OSYNC_CHANGE_TYPE_DELETED:
+    {
+        Item item = fetchItem ( id );
+        if ( ! item.isValid() ) {
+            error( OSYNC_ERROR_GENERIC, "Unable to fetch item");
+            return;
+        }
+
+        ItemDeleteJob *job = new ItemDeleteJob( item );
+        if ( ! job->exec() ) {
+            error( OSYNC_ERROR_GENERIC, "Unable to delete item");
+            return;
+        }
+        break;
+    }
+
+    case OSYNC_CHANGE_TYPE_UNMODIFIED:
+    {
+        kDebug() << "UNMODIFIED";
+        // should we do something here?
+        break;
+    }
+    default:
+        kDebug() << "got invalid changetype?";
+        error(OSYNC_ERROR_GENERIC, "got invalid changetype");
+        return;
+    }
+
+    osync_hashtable_update_change ( hashtable, change );
 
     success();
 }
 
-bool DataSink::setPayload ( Item *item, const QString &str )
+bool DataSink::setPayload ( Item *item, const QString mimeType, const QString &str )
 {
     kDebug();
+    item->setMimeType ( mimeType );
     switch ( m_type )
     {
     case Contacts:
@@ -457,7 +490,6 @@ bool DataSink::setPayload ( Item *item, const QString &str )
         kDebug() << "type = contacts";
         KABC::VCardConverter converter;
         KABC::Addressee vcard = converter.parseVCard ( str.toUtf8() );
-        item->setMimeType ( "text/directory" );
         item->setPayload<KABC::Addressee> ( vcard );
         kDebug() << "payload: " << vcard.toString().toUtf8();
         break;
@@ -467,7 +499,6 @@ bool DataSink::setPayload ( Item *item, const QString &str )
         kDebug() << "events";
         KCal::ICalFormat format;
         KCal::Incidence *calEntry = format.fromString ( str.toUtf8() );
-        item->setMimeType ( "application/x-vnd.akonadi.calendar.event" );
         item->setPayload<IncidencePtr> ( IncidencePtr ( calEntry->clone() ) );
         kDebug() << "payload: " << str.toUtf8();
         break;
@@ -477,7 +508,6 @@ bool DataSink::setPayload ( Item *item, const QString &str )
         kDebug() << "todos";
         KCal::ICalFormat format;
         KCal::Incidence *todoEntry = format.fromString ( str.toUtf8() );
-        item->setMimeType ( "application/x-vnd.akonadi.calendar.todo" );
         item->setPayload<IncidencePtr> ( IncidencePtr ( todoEntry->clone() ) );
         kDebug() << "payload: " << str.toUtf8();
         break;
@@ -487,8 +517,6 @@ bool DataSink::setPayload ( Item *item, const QString &str )
         kDebug() << "notes";
         KCal::ICalFormat format;
         KCal::Incidence *noteEntry = format.fromString ( str.toUtf8() );
-//         item->setMimeType ( "application/x-vnd.kde.notes" );
-        item->setMimeType ( "application/x-vnd.akonadi.calendar.journal" );
         item->setPayload<IncidencePtr> ( IncidencePtr ( noteEntry->clone() ) );
         kDebug() << "payload: " << str.toUtf8();
         break;
@@ -505,13 +533,13 @@ const Item DataSink::fetchItem ( const QString& id )
 {
     kDebug();
 
-     ItemFetchJob *fetchJob = new ItemFetchJob ( collection() );
-        fetchJob->fetchScope();
+    ItemFetchJob *fetchJob = new ItemFetchJob ( collection() );
+    fetchJob->fetchScope().fetchFullPayload();
 
-        if ( fetchJob->exec() )
-            foreach ( const Item &item, fetchJob->items() )
-            if ( !strcmp(item.remoteId().toLatin1(), id.toLatin1() ))
-                return item;
+    if ( fetchJob->exec() )
+        foreach ( const Item &item, fetchJob->items() )
+        if ( !strcmp(item.remoteId().toLatin1(), id.toLatin1() ))
+            return item;
     // no such item found?
     // this will be handled as invalid item
     return Item();

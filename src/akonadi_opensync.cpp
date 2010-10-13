@@ -98,12 +98,12 @@ extern "C"
             else
                 continue;
 
-            // there might be someting more intelligent to check when to return below
+            // there might be something more intelligent to check how to return below
             if ( !ds->initialize( plugin, info, sink, error ) ) {
-	      osync_objtype_sink_set_enabled(sink, false);
-	      osync_objtype_sink_set_available(sink, false);
-	      delete ds;
-	      objects_supported--;
+                osync_objtype_sink_set_enabled(sink, false);
+                osync_objtype_sink_set_available(sink, false);
+                delete ds;
+                objects_supported--;
             }
         }
 
@@ -171,25 +171,14 @@ extern "C"
     application/x-vnd.akonadi.calendar.freebusy - this will be most probably ignored, so not checking for it
     */
 
-    static osync_bool testSupport(OSyncObjTypeSink *sink, OSyncPluginConfig *config, OSyncError **error ) {
+    static osync_bool testSupport(OSyncObjTypeSink *sink, OSyncPluginConfig *config, QString mimeType, OSyncError **error ) {
 
         kDebug();
-        QString mimeType;
 
-        const char *myType = osync_objtype_sink_get_name(sink);
         Akonadi::CollectionFetchScope scope;
         scope.setIncludeUnsubscribed( true );
-        if ( ! strcmp(myType,"contact") )
-            mimeType = "application/x-vnd.kde.contactgroup" ; // text/directory
-        else if ( ! strcmp(myType,"event") )
-            mimeType = "application/x-vnd.akonadi.calendar.event";
-        else if ( ! strcmp(myType,"note") )
-            mimeType = "application/x-vnd.akonadi.calendar.journal";
-        else if ( ! strcmp(myType,"todo") )
-            mimeType = "application/x-vnd.akonadi.calendar.todo";
-        else
-            return false;
 
+        bool configured = false;
         scope.setContentMimeTypes( QStringList() << mimeType );
 
         // fetch all akonadi collections for this mimetype
@@ -203,12 +192,11 @@ extern "C"
         int col_count = colsList.count();
         kDebug() << "found" << col_count << "collections";
         bool enabled = false;
-	bool configured = false;
 
         foreach ( const Akonadi::Collection &col, colsList ) {
             kDebug() << "processing resource " << col.name() << col.contentMimeTypes();
             kDebug() << "url                 " << col.name() << col.url().url();
-	    configured = false;
+            configured = false;
 
             OSyncList *resList = osync_plugin_config_get_resources(config);
             for ( OSyncList *r = resList; r; r = r->next ) {
@@ -218,40 +206,39 @@ extern "C"
                 const char *myMimeType = osync_plugin_resource_get_mime(myRes);
                 const char *myUrl = osync_plugin_resource_get_url(myRes);
 
-                if ( !strcmp(myObjType, myType) ) {
+                if ( !strcmp(myObjType, osync_objtype_sink_get_name(sink)) ) {
                     if ( !strcmp(myUrl , "default") ) {
                         osync_plugin_resource_set_name( myRes, toXml(col.name()).toLatin1() );
                         osync_plugin_resource_set_url(myRes, col.url().url().toLatin1());
                         osync_plugin_resource_set_mime(myRes, mimeType.toLatin1() );
-			configured = true;
+                        configured = true;
                     } else if ( !strcmp(myUrl, col.url().url().toLatin1()) && !strcmp(myMimeType, mimeType.toLatin1()) ) {
                         kDebug() << "aleady configured" << myObjType;
-			configured = true;
+                        configured = true;
                     }
                     if (! enabled )
-		      enabled = osync_plugin_resource_is_enabled(myRes);
+                        enabled = osync_plugin_resource_is_enabled(myRes);
                 }
             }
-            
-            if ( ! configured  ) {
-                        OSyncPluginResource *newRes = create_resource(myType, error ) ;
-                        osync_plugin_resource_set_name( newRes, toXml(col.name()).toLatin1() );
-                        osync_plugin_resource_set_url(newRes, col.url().url().toLatin1());
-                        osync_plugin_resource_set_mime(newRes, mimeType.toLatin1() );
-                        if ( ! enabled  ) {
-			  osync_plugin_resource_enable( newRes, true );
-			  enabled = true;
-			}
-			else {
-			  osync_plugin_resource_enable( newRes, false );
-			}
-			
-                        osync_plugin_config_add_resource(config , newRes);
-			configured = true;
-	    }
-			
-        }
 
+            if ( ! configured  ) {
+                OSyncPluginResource *newRes = create_resource(osync_objtype_sink_get_name(sink), error ) ;
+                osync_plugin_resource_set_name( newRes, toXml(col.name()).toLatin1() );
+                osync_plugin_resource_set_url(newRes, col.url().url().toLatin1());
+                osync_plugin_resource_set_mime(newRes, mimeType.toLatin1() );
+                if ( ! enabled  ) {
+                    osync_plugin_resource_enable( newRes, true );
+                    enabled = true;
+                }
+                else {
+                    osync_plugin_resource_enable( newRes, false );
+                }
+
+                osync_plugin_config_add_resource(config , newRes);
+                configured = true;
+            }
+
+        }
 
         return configured;
     }
@@ -275,13 +262,43 @@ extern "C"
         OSyncList *sinks = osync_plugin_info_get_objtype_sinks(info);
         for ( OSyncList *s = sinks; s; s = s->next ) {
             OSyncObjTypeSink *sink = (OSyncObjTypeSink*) s->data;
+            const char *myType = osync_objtype_sink_get_name(sink);
             // check if sync supported
-            if ( ! testSupport(sink, config, error) ) {
-                osync_objtype_sink_set_available(sink, false);
+            if ( ! strcmp(myType,"contact") ) {
+                /* NOTE
+                *  for groups I think x-vnd.kde.contactgroup is useful ...
+                *  for address book though "text/directory"
+                *  so we check here if there are contact groups
+                */
+                if ( ! testSupport(sink, config, "application/x-vnd.kde.contactgroup", error) )
+                    osync_objtype_sink_set_available(sink, false);
+                else
+                    osync_objtype_sink_set_available(sink, true);
             }
-            else {
-                osync_objtype_sink_set_available(sink, true);
+            else if ( ! strcmp(myType,"event") ) {
+                if ( ! testSupport(sink, config, "application/x-vnd.akonadi.calendar.event", error) )
+                    osync_objtype_sink_set_available(sink, false);
+                else
+                    osync_objtype_sink_set_available(sink, true);
             }
+            else if ( ! strcmp(myType,"note") ) {
+                if ( ! testSupport(sink, config, "application/x-vnd.akonadi.calendar.journal", error) )
+                    osync_objtype_sink_set_available(sink, false);
+                else
+                    osync_objtype_sink_set_available(sink, true);
+
+                if ( ! testSupport(sink, config, "application/x-vnd.kde.notes", error) )
+                    osync_objtype_sink_set_available(sink, false);
+                else
+                    osync_objtype_sink_set_available(sink, true);
+            }
+            else if ( ! strcmp(myType,"todo") ) {
+                if ( ! testSupport(sink, config, "application/x-vnd.akonadi.calendar.todo", error) )
+                    osync_objtype_sink_set_available(sink, false);
+                else
+                    osync_objtype_sink_set_available(sink, true);
+            }
+
             osync_plugin_info_add_objtype( info, sink );
         }
         // set information about the peer (KDE itself)

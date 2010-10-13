@@ -91,7 +91,8 @@ class DataSink : public SinkBase
 
   private:
     const Item fetchItem( const QString& id );
-    bool setPayload( Item *item, const QString &str );
+    bool setPayload( Item *item, const QString mimeType, const QString &str );
+    QString getMimeWithFormat(OSyncObjFormat* format);
 
   private:
     OSyncHashTable *m_hashtable;
@@ -99,7 +100,7 @@ class DataSink : public SinkBase
     QString m_Format;
     bool m_Enabled;
     QString m_Url;
-    QString m_MimeType;
+//     QString m_MimeType;
 };
 
 #endif
