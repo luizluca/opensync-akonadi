@@ -50,9 +50,9 @@ typedef boost::shared_ptr<KCal::Incidence> IncidencePtr;
 
 DataSink::DataSink ( int type ) :
         SinkBase ( GetChanges | Commit | SyncDone ),
-        m_Format(0),
+        m_Format("default"),
         m_Enabled(false),
-        m_Url(0)
+        m_Url("default")
 {
     kDebug() << "Constr.objtype:" << type;
     m_type = type;
