@@ -95,12 +95,9 @@ class DataSink : public SinkBase
     QString getMimeWithFormat(OSyncObjFormat* format);
 
   private:
-//     OSyncHashTable *m_hashtable;
     int m_type;
     QString m_Format;
-    bool m_Enabled;
     QString m_Url;
-//     QString m_MimeType;
 };
 
 #endif

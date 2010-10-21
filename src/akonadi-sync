@@ -28,7 +28,7 @@
       <Url>default</Url>
     </Resource>
     <Resource>
-      <Enabled>0</Enabled>
+      <Enabled>1</Enabled>
       <Formats>
         <Format>
           <Name>vtodo10</Name>
