@@ -283,8 +283,8 @@ void DataSink::reportChange ( const Item& item )
     osync_change_set_hash ( change, getHash( item.id(), item.revision() ).toLatin1().data() );
     OSyncChangeType changetype = osync_hashtable_get_changetype(hashtable, change);
     osync_change_set_changetype(change, changetype);
-
     osync_hashtable_update_change ( hashtable, change );
+
 
     if ( changetype == OSYNC_CHANGE_TYPE_UNMODIFIED ) {
         osync_change_unref(change);
@@ -321,6 +321,7 @@ void DataSink::reportChange ( const Item& item )
 //     not sure but it gets probably delete together with data
 //     osync_data_unref ( odata );
     osync_context_report_change ( context(), change );
+//     osync_hashtable_update_change ( hashtable, change ); //?????
     
     osync_change_unref ( change );
 
@@ -348,6 +349,8 @@ void DataSink::slotGetChangesFinished ( KJob * )
         }           
 
         osync_change_set_uid ( change, uid.toLatin1().data() );
+	QString hash = osync_change_get_hash(change);
+	kDebug() << "hash:" << hash;
         osync_change_set_changetype ( change, OSYNC_CHANGE_TYPE_DELETED );
 	
         OSyncObjFormat *format = osync_format_env_find_objformat( formatenv, m_Format.toLatin1().data() );
@@ -388,13 +391,14 @@ void DataSink::commit ( OSyncChange *change )
     
     QString remoteId = QString::fromLatin1 ( osync_change_get_uid ( change ) );
     QString hash = QString::fromLatin1 ( osync_change_get_hash ( change ) );
+
     
     int id = idFromHash(hash);
     kDebug() << "change   id:" << id;
     kDebug() << "change  uid:" << remoteId;
     kDebug() << "change hash:" << hash;
     kDebug() << "objform:" << osync_objformat_get_name ( osync_change_get_objformat ( change ) );
-    kDebug();
+//     kDebug();
 
     Akonadi::Collection col = collection();
 
@@ -587,12 +591,13 @@ const Item DataSink::fetchItem ( const QString& remoteId )
 void DataSink::syncDone()
 {
     kDebug() << "sync for sink member done";
-    OSyncError *error = 0;
-    osync_objtype_sink_save_hashtable ( sink() , &error );
-    if ( error ) {
-        warning ( error );
-        return;
-    }
+    // Do we need this in 0.40???
+//     OSyncError *error = 0;
+//     osync_objtype_sink_save_hashtable ( sink() , &error );
+//     if ( error ) {
+//         warning ( error );
+//         return;
+//     }
     success();
 }
 
