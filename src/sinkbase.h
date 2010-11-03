@@ -56,38 +56,40 @@ public:
     virtual void disconnect();
     virtual void getChanges();
     virtual void commit( OSyncChange *chg );
-    virtual void write();
-    virtual void read();
-    virtual void commitAll();
+//     virtual void write();
+//     virtual void read();
+//     virtual void commitAll();
     virtual void syncDone();
 
     OSyncContext* context() const {
         return mContext;
     }
-    void setContext( OSyncContext *context );
 
     OSyncPluginInfo *pluginInfo() const {
         return mPluginInfo;
     }
-    void setPluginInfo( OSyncPluginInfo *info );
-    void setSlowSink (osync_bool);
     osync_bool getSlowSink ();
+    
+    void setPluginInfo( OSyncPluginInfo *info );
+    void setContext( OSyncContext *context );
+    void setSink( OSyncObjTypeSink *sink);
+    void setSlowSink (osync_bool);
 
 protected:
     void success() const;
-    void error( OSyncErrorType type, const QString &msg ) const;
+    void error(OSyncErrorType type, QString msg) const;
     void warning( OSyncError *error ) const;
-    void wrapSink( OSyncObjTypeSink* sink );
+    void wrapSink(OSyncObjTypeSink* sink );
     OSyncObjTypeSink* sink() const {
         return mSink;
     }
-    bool m_isContact, m_isEvent, m_isTodo, m_isNote, m_isJournal; //TODO intended to be private
+//     bool m_isContact, m_isEvent, m_isTodo, m_isNote, m_isJournal; //TODO intended to be private
 
 private:
 
-    mutable OSyncContext *mContext;
     OSyncObjTypeSink *mSink;
     OSyncPluginInfo *mPluginInfo;
+    mutable OSyncContext *mContext;
 //     what do we have and what can we do
     bool m_canConnect, m_canDisconnect, m_canCommit, m_canCommitAll,
     m_canGetChanges, m_canWrite, m_canRead, m_canSyncDone;

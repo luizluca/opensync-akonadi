@@ -55,21 +55,22 @@ extern "C"
 
     static void* akonadi_initialize(OSyncPlugin *plugin, OSyncPluginInfo *info, OSyncError **error)
     {
-        kDebug();
         osync_trace(TRACE_ENTRY, "%s(%p, %p, %p)", __func__, plugin, info, error);
 
         if ( !app )
             app = new QCoreApplication( fakeArgc, fakeArgv );
         if ( !kcd )
-            kcd = new KComponentData( "akonadi_opensync" );
+            kcd = new KComponentData( "akonadi-sync" );
 
+        kDebug();
         // main sink
         AkonadiSink *mainSink = new AkonadiSink();
-        if ( !mainSink->initialize( plugin, info, error ) ) {
+        if ( !mainSink->initialize(plugin, info, error ) ) {
             delete mainSink;
             osync_trace(TRACE_EXIT_ERROR,  "%s: NULL", __func__);
             return 0;
         }
+//         QList<DataSink*> sinkList;
 
         // object type sinks
 //   http://www.opensync.org/wiki/devel/pluginPortingGuide-0.40
@@ -77,7 +78,8 @@ extern "C"
 // ---------------------------------
 // osync_plugin_get_config_type();
 
-        unsigned int objects_supported = 4;
+//         unsigned int objects_supported = 4;
+	QList<DataSink*> sinkList;
 
         OSyncList *s = NULL, *list = osync_plugin_info_get_objtype_sinks(info);
         for ( s = list; s; s = s->next ) {
@@ -99,17 +101,21 @@ extern "C"
                 continue;
 
             // there might be something more intelligent to check how to return below
-            if ( !ds->initialize( plugin, info, sink, error ) ) {
-                osync_objtype_sink_set_enabled(sink, false);
+            if ( !ds->initialize(plugin, info, sink, error ) ) {
+//                 osync_objtype_sink_set_enabled(sink, false);
                 osync_objtype_sink_set_available(sink, false);
                 delete ds;
-                objects_supported--;
-            }
+//                 objects_supported--;
+		continue;
+            } 
+//             osync_objtype_sink_set_enabled(sink, true);
+// 	    mainSink->addSink(ds);
+	    sinkList.append(ds);
+	    osync_objtype_sink_set_available(sink, true);
         }
 
-
 //        if we support at least one object return the mainSink
-        if ( objects_supported >= 1 ) {
+        if ( ! sinkList.isEmpty() ) {
             osync_trace(TRACE_EXIT, " %s: %p", __func__, mainSink);
             return mainSink;
         }
@@ -282,12 +288,8 @@ extern "C"
                     osync_objtype_sink_set_available(sink, true);
             }
             else if ( ! strcmp(myType,"note") ) {
-                if ( ! testSupport(sink, config, "application/x-vnd.akonadi.calendar.journal", error) )
-                    osync_objtype_sink_set_available(sink, false);
-                else
-                    osync_objtype_sink_set_available(sink, true);
-
-                if ( ! testSupport(sink, config, "application/x-vnd.kde.notes", error) )
+                if ( ! testSupport(sink, config, "application/x-vnd.akonadi.calendar.journal", error) 
+		  && ! testSupport(sink, config, "application/x-vnd.kde.notes", error) )
                     osync_objtype_sink_set_available(sink, false);
                 else
                     osync_objtype_sink_set_available(sink, true);
@@ -304,7 +306,7 @@ extern "C"
         // set information about the peer (KDE itself)
         {
             OSyncVersion *version = osync_version_new(error);
-            osync_version_set_plugin(version, "Akonadi-sync");
+            osync_version_set_plugin(version, "akonadi-sync");
             osync_version_set_softwareversion(version, "0.40");
             osync_version_set_identifier(version, "akonadi-sync");
             osync_plugin_info_set_version(info, version);
@@ -319,8 +321,8 @@ extern "C"
     {
         osync_trace(TRACE_ENTRY, "%s(%p)", __func__, userdata);
         kDebug();
-        AkonadiSink *sink = reinterpret_cast<AkonadiSink*>( userdata );
-        sink->disconnect();
+        AkonadiSink *mainSink = reinterpret_cast<AkonadiSink*>( userdata );
+        mainSink->disconnect();
         delete kcd;
         kcd = 0;
         delete app;
@@ -340,13 +342,14 @@ extern "C"
         }
 
         osync_plugin_set_name(plugin, "akonadi-sync");
-        osync_plugin_set_longname(plugin, "Akonadi");
+        osync_plugin_set_longname(plugin, "Akonadi OpenSync Plugin");
         osync_plugin_set_description(plugin, "Plugin to synchronize with Akonadi");
         osync_plugin_set_config_type(plugin, OSYNC_PLUGIN_OPTIONAL_CONFIGURATION);
         osync_plugin_set_initialize(plugin, akonadi_initialize);
-        osync_plugin_set_finalize_timeout(plugin, 5);
         osync_plugin_set_finalize(plugin, akonadi_finalize);
+        osync_plugin_set_finalize_timeout(plugin, 5);
         osync_plugin_set_discover(plugin, akonadi_discover);
+        osync_plugin_set_discover_timeout(plugin, 5);
         osync_plugin_set_start_type(plugin, OSYNC_START_TYPE_PROCESS);
 
         if ( ! osync_plugin_env_register_plugin(env, plugin, error) ) {

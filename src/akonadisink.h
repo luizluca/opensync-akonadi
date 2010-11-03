@@ -1,8 +1,5 @@
 /*
     Copyright (c) 2008 Volker Krause <vkrause@kde.org>
-    Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
-
-    $Id$
 
     This library is free software; you can redistribute it and/or modify it
     under the terms of the GNU Library General Public License as published by
@@ -22,7 +19,7 @@
 
 #ifndef AKONADISINK_H
 #define AKONADISINK_H
-
+// #include "datasink.h"
 #include "sinkbase.h"
 
 /**
@@ -30,16 +27,20 @@
  */
 class AkonadiSink : public SinkBase
 {
-    Q_OBJECT
+  Q_OBJECT
 
-public:
+  public:
     AkonadiSink();
     ~AkonadiSink();
 
     bool initialize( OSyncPlugin *plugin, OSyncPluginInfo *info, OSyncError **error );
 
     void connect();
-
+    
+//     void addSink(DataSink* ds);
+    
+//   private:
+//     QList<DataSink*> m_SinkList;
 };
 
 #endif

@@ -1,8 +1,5 @@
 /*
     Copyright (c) 2008 Volker Krause <vkrause@kde.org>
-    Copyright (c) 2010 Emanoil Kotsev <deloptes@yahoo.com>
-    
-    $Id$
 
     This library is free software; you can redistribute it and/or modify it
     under the terms of the GNU Library General Public License as published by
@@ -27,16 +24,11 @@
 
 #include <akonadi/collection.h>
 #include <akonadi/itemfetchjob.h>
-#include <akonadi/itemcreatejob.h>
-#include <akonadi/itemmodifyjob.h>
-#include <akonadi/itemfetchscope.h>
 
 #include <opensync/opensync.h>
 #include <opensync/opensync-plugin.h>
 #include <opensync/opensync-data.h>
 #include <opensync/opensync-format.h>
-
-#include <KUrl>
 
 #include <boost/shared_ptr.hpp>
 
@@ -50,12 +42,12 @@ class DataSink : public SinkBase
   Q_OBJECT
 
   public:
-    enum Type { Calendars = 0, Contacts, Todos,  Notes };
+    enum Type { Calendars = 0, Contacts, Notes, Todos };
 
     DataSink( int type );
     ~DataSink();
 
-    bool initialize( OSyncPlugin *plugin, OSyncPluginInfo *info, OSyncObjTypeSink *sink, OSyncError **error );
+    bool initialize(OSyncPlugin *plugin, OSyncPluginInfo *info, OSyncObjTypeSink *sink, OSyncError **error );
 
     void getChanges();
     void commit( OSyncChange *change );
@@ -66,7 +58,6 @@ class DataSink : public SinkBase
     void slotItemsReceived( const Akonadi::Item::List & );
 
   protected:
-
     /**
      * Returns the collection we are supposed to sync with.
      */
@@ -78,26 +69,42 @@ class DataSink : public SinkBase
     void reportChange( const Item& item, const QString& format );
 
     /**
-     * Reimplement in subclass to provide data about changes to opensync.
-     * Note, that you must call DataSink::reportChange( Item, QString, int ) 
-     * after you have organized data to be send to opensync.
+     * Reimplement in subclass to provide data about changes to opensync. Note, that you must call DataSink::reportChange( Item, QString, int ) after you have organized data to be send to opensync.
      */
     void reportChange( const Item & item );
 
     /**
+     * Creates a new item based on the data given by opensync.
+     */
+//     const Item createItem( OSyncChange *change );
+    /**
+     * Modified an item based on the data given by opensync.
+     */
+//     const Item modifyItem( OSyncChange *change );
+    /**
      * Deletes an item based on the data given by opensync.
      */
-    void deleteItem( OSyncChange *change );
+//     void deleteItem( OSyncChange *change );
+
 
   private:
+    const Item createAkonadiItem( OSyncChange *change );
     const Item fetchItem( const QString& id );
-    bool setPayload( Item *item, const QString mimeType, const QString &str );
-    QString getMimeWithFormat(OSyncObjFormat* format);
+    const Item fetchItem( int id );
+    const QString formatName();
+    bool setPayload( Item *item, const QString &str );
+    QString getHash(int id, int rev);
+    int idFromHash(QString hash);
+
 
   private:
+
     int m_type;
+    QString m_Name;
     QString m_Format;
+    QString m_MimeType;
     QString m_Url;
+
 };
 
 #endif

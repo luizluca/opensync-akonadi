@@ -25,9 +25,11 @@
 
 #define WRAP() \
   osync_trace( TRACE_ENTRY, "%s(%p,%p, %p, %p)", __PRETTY_FUNCTION__, sink, info, ctx, userdata); \
-  SinkBase *sb = reinterpret_cast<SinkBase*>(userdata ); \
-  sb->setContext( ctx ); \
-  sb->setPluginInfo( info );
+  kDebug() << osync_objtype_sink_get_name( sink );\
+  SinkBase *sb = reinterpret_cast<SinkBase*>(userdata); \
+  sb->setSink(sink);\
+  sb->setPluginInfo( info );\
+  sb->setContext( ctx );
 
 extern "C"
 {
@@ -40,38 +42,38 @@ extern "C"
     }
 
     static void disconnect_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, void *userdata) {
-        WRAP(  )
+        WRAP( )
         sb->disconnect();
+	osync_objtype_sink_unref(sink);
         osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
     static void get_changes_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, osync_bool slow_sync, void *userdata) {
 
-        WRAP (  )
-        if ( slow_sync )
-            sb->setSlowSink(slow_sync);
+        WRAP ( )
+        sb->setSlowSink(slow_sync);
         sb->getChanges();
         osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
     static void sync_done_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, void *userdata) {
-        WRAP(  )
+        WRAP( )
         sb->syncDone();
         osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
     static void commit_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  OSyncChange *change, void *userdata) {
-        WRAP(  )
+        WRAP( )
         sb->commit(change);
         osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
-    static void commitAll_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  void *userdata) {
-        WRAP(  )
-        sb->commitAll();
-        osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
-    }
-
+//     static void commitAll_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  void *userdata) {
+//         WRAP(  )
+//         sb->commitAll();
+//         osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
+//     }
+// 
 //     static void read_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx,  OSyncChange *change, void *userdata) {
 //         WRAP(  )
 //         sb->commit(change);
@@ -88,9 +90,9 @@ extern "C"
 
 
 SinkBase::SinkBase( int features ) :
-        mContext( 0 ),
         mSink( 0 ),
         mPluginInfo( 0 ),
+        mContext( 0 ),
         m_canConnect(false),
         m_canDisconnect(false),
         m_canCommit    (false),
@@ -117,12 +119,12 @@ SinkBase::SinkBase( int features ) :
 
 SinkBase::~SinkBase()
 {
-    if ( mContext)
-        osync_context_unref(mContext);
+//     if ( mContext)
+//         osync_context_unref(mContext);
     if ( mSink )
         osync_objtype_sink_unref( mSink );
-    if (mPluginInfo)
-        osync_plugin_info_unref(mPluginInfo);
+//     if (mPluginInfo)
+//         osync_plugin_info_unref(mPluginInfo);
 }
 
 void SinkBase::connect()
@@ -132,50 +134,54 @@ void SinkBase::connect()
 
 void SinkBase::setSlowSink(osync_bool s)
 {
-    Q_ASSERT( m_SlowSync );
+  kDebug();
     m_SlowSync = s;
 }
 
 osync_bool SinkBase::getSlowSink()
 {
-    Q_ASSERT( m_SlowSync );
+  kDebug();
     return m_SlowSync;
 }
 
 void SinkBase::disconnect()
 {
+  kDebug();
     Q_ASSERT( false );
 }
 
 void SinkBase::getChanges()
 {
+  kDebug();
     Q_ASSERT( false );
 }
 
 void SinkBase::commit(OSyncChange * chg)
 {
+  kDebug();
     Q_UNUSED( chg );
     Q_ASSERT( false );
 }
 
-void SinkBase::commitAll()
-{
-    Q_ASSERT( false );
-}
-
-void SinkBase::write()
-{
-    Q_ASSERT( false );
-}
-
-void SinkBase::read()
-{
-    Q_ASSERT( false );
-}
+// void SinkBase::commitAll()
+// {
+//     Q_ASSERT( false );
+// }
+// 
+// void SinkBase::write()
+// {
+//     Q_ASSERT( false );
+// }
+// 
+// void SinkBase::read()
+// {
+//     Q_ASSERT( false );
+// }
 
 
 void SinkBase::syncDone()
 {
+  kDebug();
     Q_ASSERT( false );
 }
 
@@ -184,13 +190,18 @@ void SinkBase::success() const
     kDebug();
     Q_ASSERT( mContext );
     osync_context_report_success( mContext );
+    mContext = 0;
 }
 
-void SinkBase::error(OSyncErrorType type, const QString &msg) const
+void SinkBase::error(OSyncErrorType type, QString msg) const
 {
     kDebug();
     Q_ASSERT( mContext );
-    osync_context_report_error(mContext, type, "%s", msg.toLatin1().data() );
+    OSyncError *oerror;
+    osync_error_set(&oerror, type, "%s", msg.toUtf8().data() );
+    osync_context_report_osyncerror(mContext, oerror );
+    osync_error_unref( &oerror );
+    mContext = 0;
 }
 
 void SinkBase::warning(OSyncError * error) const
@@ -199,6 +210,7 @@ void SinkBase::warning(OSyncError * error) const
     Q_ASSERT( mContext );
     osync_context_report_osyncwarning( mContext, error );
     osync_error_unref( &error );
+    mContext = 0;
 }
 
 void SinkBase::wrapSink(OSyncObjTypeSink* sink)
@@ -212,10 +224,10 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
     kDebug() << ">> m_canDisconnect:" << m_canDisconnect;
     kDebug() << ">> m_canCommit:" << m_canCommit;
     kDebug() << ">> m_canGetChanges:" << m_canGetChanges;
-    kDebug() << ">> m_canWrite:" << m_canConnect;
-    kDebug() << ">> m_canCommitAll:" << m_canGetChanges;
-    kDebug() << ">> m_canRead:" << m_canConnect;
-    kDebug() << ">> m_canSyncDone:" << m_canGetChanges;
+    kDebug() << ">> m_canWrite:" << m_canWrite;
+    kDebug() << ">> m_canCommitAll:" << m_canCommitAll;
+    kDebug() << ">> m_canRead:" << m_canRead;
+    kDebug() << ">> m_canSyncDone:" << m_canSyncDone;
 
     if ( m_canConnect ) {
         osync_objtype_sink_set_connect_func(sink, connect_wrapper);
@@ -233,10 +245,10 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
         osync_objtype_sink_set_commit_func(sink, commit_wrapper);
         osync_objtype_sink_set_commit_timeout(sink, 15);
     }
-    if ( m_canCommitAll ) {
-        osync_objtype_sink_set_committed_all_func(sink, commitAll_wrapper);
-        osync_objtype_sink_set_committedall_timeout(sink, 15);
-    }
+//     if ( m_canCommitAll ) {
+//         osync_objtype_sink_set_committed_all_func(sink, commitAll_wrapper);
+//         osync_objtype_sink_set_committedall_timeout(sink, 15);
+//     }
     if ( m_canSyncDone ) {
         osync_objtype_sink_set_sync_done_func(sink, sync_done_wrapper);
         osync_objtype_sink_set_syncdone_timeout(sink, 15);
@@ -249,16 +261,27 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
 // 	osync_objtype_sink_set_read_timeout(sink, 5);
 //   }
 
+    osync_objtype_sink_set_userdata ( sink, this );
+
+}
+
+void SinkBase::setSink(OSyncObjTypeSink *sink)
+{
+  kDebug();
+    Q_ASSERT( sink == mSink );
+    mSink = sink;
 }
 
 void SinkBase::setPluginInfo(OSyncPluginInfo * info)
 {
+  kDebug();
     Q_ASSERT( mPluginInfo == 0 || mPluginInfo == info );
     mPluginInfo = info;
 }
 
 void SinkBase::setContext(OSyncContext * context)
 {
+  kDebug();
     Q_ASSERT( mContext == 0 || context == mContext );
     // ### do I need to ref() that here? and then probably deref() the old one somewhere above?
     mContext = context;
