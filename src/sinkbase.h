@@ -83,7 +83,6 @@ protected:
     OSyncObjTypeSink* sink() const {
         return mSink;
     }
-//     bool m_isContact, m_isEvent, m_isTodo, m_isNote, m_isJournal; //TODO intended to be private
 
 private:
 

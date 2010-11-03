@@ -19,7 +19,7 @@
 
 #ifndef AKONADISINK_H
 #define AKONADISINK_H
-// #include "datasink.h"
+
 #include "sinkbase.h"
 
 /**
@@ -36,11 +36,7 @@ class AkonadiSink : public SinkBase
     bool initialize( OSyncPlugin *plugin, OSyncPluginInfo *info, OSyncError **error );
 
     void connect();
-    
-//     void addSink(DataSink* ds);
-    
-//   private:
-//     QList<DataSink*> m_SinkList;
+
 };
 
 #endif

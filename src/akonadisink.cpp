@@ -30,10 +30,6 @@ AkonadiSink::AkonadiSink() :
 
 AkonadiSink::~AkonadiSink()
 {
-//   Q_FOREACH (DataSink *ds, m_SinkList) {
-//     delete ds;
-//   }
-//   m_SinkList.clear();
 }
 
 bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncError ** error)
@@ -47,18 +43,12 @@ bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSync
   return true;
 }
 
-// void AkonadiSink::setSink(OSyncObjTypeSink *sink)
-// {
-// 
-// }
-
 void AkonadiSink::connect()
 {
   osync_trace(TRACE_ENTRY, "%s(%p, %p)", __PRETTY_FUNCTION__, pluginInfo(), context());
   kDebug();
-//   OSyncError *oerror = 0;
+
   if ( !Akonadi::Control::start() ) {
-//     osync_error_set_type(&oerror,OSYNC_ERROR_NO_CONNECTION);
     kDebug() << "Could not start Akonadi." ;
     error( OSYNC_ERROR_NO_CONNECTION, "Could not start Akonadi." );
     osync_trace(TRACE_EXIT_ERROR, "%s: %s", __PRETTY_FUNCTION__, "Could not start Akonadi.");
@@ -68,12 +58,5 @@ void AkonadiSink::connect()
   success();
   osync_trace(TRACE_EXIT, "%s", __PRETTY_FUNCTION__);
 }
-
-// void AkonadiSink::addSink(DataSink* ds)
-// {
-//   Q_ASSERT(ds == 0 );
-//   m_SinkList.append(ds);
-// }
-
 
 #include "akonadisink.moc"
