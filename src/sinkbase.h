@@ -91,8 +91,8 @@ private:
     mutable OSyncContext *mContext;
 //     what do we have and what can we do
     bool m_canConnect, m_canDisconnect, m_canCommit, m_canCommitAll,
-    m_canGetChanges, m_canWrite, m_canRead, m_canSyncDone;
-//  unused   bool  m_canCommitRead, m_canBatchCommit;
+    m_canGetChanges, m_canWrite, m_canRead, m_canSyncDone, m_canBatchCommit;
+//  unused   bool  m_canCommitRead;
     osync_bool m_SlowSync;
 };
 

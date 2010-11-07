@@ -44,7 +44,7 @@ extern "C"
     static void disconnect_wrapper(OSyncObjTypeSink *sink, OSyncPluginInfo *info, OSyncContext *ctx, void *userdata) {
         WRAP( )
         sb->disconnect();
-	osync_objtype_sink_unref(sink);
+	osync_objtype_sink_unref(sink); //needed?
         osync_trace( TRACE_EXIT, "%s", __PRETTY_FUNCTION__ );
     }
 
@@ -97,11 +97,11 @@ SinkBase::SinkBase( int features ) :
         m_canDisconnect(false),
         m_canCommit    (false),
         m_canCommitAll (false),
-//  unused   m_canBatchCommit(false),
         m_canGetChanges(false),
         m_canWrite     (false),
         m_canRead      (false),
         m_canSyncDone  (false),
+        m_canBatchCommit(false),
         m_SlowSync     (false)
 {
 
@@ -112,7 +112,7 @@ SinkBase::SinkBase( int features ) :
     m_canWrite      = ( features & Write ) ? true : false;
     m_canCommitAll  = ( features & CommittedAll ) ? true : false;
     m_canRead       = ( features & Read ) ? true : false;
-//  unused   m_canBatchCommit = ( features & BatchCommit ) ? true : false;
+    m_canBatchCommit = ( features & BatchCommit ) ? true : false;
     m_canSyncDone   = ( features & SyncDone ) ? true : false;
 
 }
@@ -228,6 +228,7 @@ void SinkBase::wrapSink(OSyncObjTypeSink* sink)
     kDebug() << ">> m_canCommitAll:" << m_canCommitAll;
     kDebug() << ">> m_canRead:" << m_canRead;
     kDebug() << ">> m_canSyncDone:" << m_canSyncDone;
+    kDebug() << ">> m_canBatchCommit:" << m_canBatchCommit;
 
     if ( m_canConnect ) {
         osync_objtype_sink_set_connect_func(sink, connect_wrapper);

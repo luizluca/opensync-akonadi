@@ -130,7 +130,7 @@ extern "C"
     /* FIXME: this is probably a bug in opoensync
      *		replace &
      */
-    static QString toXml(QString str) {
+    QString toXml(QString str) {
         str.replace("<","&lt;").replace(">","&gt;").replace("&","and");
         return str;
     }
@@ -214,11 +214,11 @@ extern "C"
 
                 if ( !strcmp(myObjType, osync_objtype_sink_get_name(sink)) ) {
                     if ( !strcmp(myUrl , "default") ) {
-                        osync_plugin_resource_set_name( myRes, toXml(col.name()).toLatin1() );
-                        osync_plugin_resource_set_url(myRes, col.url().url().toLatin1());
-                        osync_plugin_resource_set_mime(myRes, mimeType.toLatin1() );
+                        osync_plugin_resource_set_name( myRes, toXml(col.name()).toLatin1().data() );
+                        osync_plugin_resource_set_url(myRes, col.url().url().toLatin1().data() );
+                        osync_plugin_resource_set_mime(myRes, mimeType.toLatin1().data() );
                         configured = true;
-                    } else if ( !strcmp(myUrl, col.url().url().toLatin1()) && !strcmp(myMimeType, mimeType.toLatin1()) ) {
+                    } else if ( !strcmp(myUrl, col.url().url().toLatin1().data()) && !strcmp(myMimeType, mimeType.toLatin1().data()) ) {
                         kDebug() << "aleady configured" << myObjType;
                         configured = true;
                     }
@@ -307,8 +307,10 @@ extern "C"
         {
             OSyncVersion *version = osync_version_new(error);
             osync_version_set_plugin(version, "akonadi-sync");
-            osync_version_set_softwareversion(version, "0.40");
-            osync_version_set_identifier(version, "akonadi-sync");
+	    osync_version_set_modelversion(version, "1");
+//             osync_version_set_softwareversion(version, "0.40");
+            osync_version_set_vendor(version, "Deloptes");
+//             osync_version_set_identifier(version, "akonadi-sync");
             osync_plugin_info_set_version(info, version);
             osync_version_unref(version);
         }
@@ -344,6 +346,7 @@ extern "C"
         osync_plugin_set_name(plugin, "akonadi-sync");
         osync_plugin_set_longname(plugin, "Akonadi OpenSync Plugin");
         osync_plugin_set_description(plugin, "Plugin to synchronize with Akonadi");
+	
         osync_plugin_set_config_type(plugin, OSYNC_PLUGIN_OPTIONAL_CONFIGURATION);
         osync_plugin_set_initialize(plugin, akonadi_initialize);
         osync_plugin_set_finalize(plugin, akonadi_finalize);

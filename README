@@ -32,15 +32,21 @@ Usage
 ============
 
 1. After installation configure the plugin with "--configure" option. 
-   (I'm planning to make this step optional)
+   (This is optional if you want to have all supported sync types)
 2. Discover supported features on both sides (sync members and akonadi) 
    with "--discover" option. This step will discover sync features (supported 
    formats) and akonadi collection. They will be available in the configuration 
-   file for further setup. 
+   file for further setup (but will be disabled by default). 
 3. Reconfigure the plugin with "--configure" option. Most likely you will need 
    to enable or disable sync with given collection represented as a ressource in
-   the configuration file.
+   the configuration file (step2 above).
 4. Sync with the "--sync" or similar option
+
+Known Issues
+============
+
+If you modify an item try to sync and reject, then things got messed up.
+I'm still trying to understand why.
 
 Links
 =====

@@ -38,6 +38,7 @@ bool AkonadiSink::initialize(OSyncPlugin * plugin, OSyncPluginInfo * info, OSync
   kDebug();
   OSyncObjTypeSink *sink = osync_objtype_main_sink_new( error );
   wrapSink( sink );
+//   osync_objtype_sink_set_userdata ( sink, this );
   osync_plugin_info_set_main_sink( info, sink );
   osync_objtype_sink_unref(sink);
   return true;
