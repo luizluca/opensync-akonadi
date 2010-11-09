@@ -10,8 +10,7 @@ It provides sync ability with KDE > 4.5 using the akonadi interface.
 Important
 =========
 
-Currently Calendar does not work.
-
+This code was not tested well, so you've been warned!
 
 Requirements
 ============
