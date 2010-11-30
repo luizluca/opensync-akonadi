@@ -19,7 +19,7 @@ include_directories( ${AKONADI_INCLUDE_DIR} ${KDE4_INCLUDES} ${KDE4_INCLUDE_DIR}
 include_directories( ${QT_INCLUDE_DIR} )
 # 
 include_directories( ${OPENSYNC_INCLUDE_DIR} ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/src"  ${GLIB2_INCLUDE_DIR} ${GLIB2_MAIN_INCLUDE_DIR})
-include_directories( "../build/src") 
+include_directories( "${CMAKE_BINARY_DIR}/src" )  
 # 
 link_directories( ${AKONADI_LIB_DIR} ${KDE4_LIB_DIR} ${KDEPIMLIBS_LIB_DIR} ${OPENSYNC_LIBRARIES_DIR} ${glib2LibDir} )
 
