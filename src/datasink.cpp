@@ -443,11 +443,11 @@ void DataSink::commit ( OSyncChange *change )
             error( OSYNC_ERROR_GENERIC, "Unable to fetch item.");
             return;
 	  }
-    kDebug() << "change  qint:" << remoteId.toLongLong();
-	  item.setId((qint64) remoteId.toLongLong());
+	  //TODO: Test
+//     kDebug() << "change  qint:" << remoteId.toLongLong();
+// 	  item.setId((qint64) remoteId.toLongLong());
           osync_change_set_uid ( change, item.remoteId().toLatin1().data() );
           osync_change_set_hash ( change, getHash( item.id(), item.revision() ).toLatin1().data() );
-	  //TODO: Test
 	}
         break;
     }
