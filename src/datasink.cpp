@@ -147,10 +147,12 @@ bool DataSink::initialize ( OSyncPlugin * plugin, OSyncPluginInfo * info, OSyncO
         }
 
         default:
-            return false;
+	  osync_list_free(objfrmtList);
+          return false;
         }
     }
 
+    osync_list_free(objfrmtList);
 // this adds preffered to the resource configuration if not set
     if ( ! preferred || strcmp(preferred,m_Format.toLatin1().data() ) )
         osync_plugin_resource_set_preferred_format( resource, m_Format.toLatin1().data() );
@@ -313,7 +315,8 @@ void DataSink::reportChange ( const Item& item )
     OSyncData *odata = osync_data_new ( newData, newDataSize, format, &oerror );
     if ( !odata )
     {
-      osync_change_unref((OSyncChange*) change);
+//       osync_change_unref((OSyncChange*) change);
+      osync_change_unref(change);
       warning(oerror);
       return;
     }
@@ -400,13 +403,12 @@ void DataSink::commit ( OSyncChange *change )
     QString hash = QString::fromLatin1 ( osync_change_get_hash ( change ) );
     
     //TODO: use id to identify items
-    int id = idFromHash(hash);
-    
-    kDebug() << "change   id:" << id;
-    kDebug() << "change  uid:" << remoteId;
+//     int id = idFromHash(hash);
+//     kDebug() << "change   id:" << id;
+    kDebug() << "change  uid :" << remoteId;
     kDebug() << "change hash:" << hash;
     kDebug() << "objform:" << osync_objformat_get_name ( osync_change_get_objformat ( change ) );
-//     kDebug();
+
 
     Akonadi::Collection col = collection();
 
@@ -419,14 +421,16 @@ void DataSink::commit ( OSyncChange *change )
     {
     case OSYNC_CHANGE_TYPE_ADDED:
     {
-        Item item;
         char *plain = 0; // plain is freed by data
         osync_data_get_data ( osync_change_get_data ( change ), &plain, /*size*/0 );
         QString str = QString::fromUtf8( plain );
 //         QString str = QString::fromLatin1( plain );
 //         QString str = QString::fromLocal8Bit( plain );
 	kDebug() << "data: " << str;
+
+        Item item; 
         setPayload ( &item, str );
+// 	item.setId((qint64) remoteId.toLongLong());
         item.setRemoteId( remoteId );
 
         ItemCreateJob *job = new Akonadi::ItemCreateJob ( item, col );
@@ -439,9 +443,11 @@ void DataSink::commit ( OSyncChange *change )
             error( OSYNC_ERROR_GENERIC, "Unable to fetch item.");
             return;
 	  }
+    kDebug() << "change  qint:" << remoteId.toLongLong();
+	  item.setId((qint64) remoteId.toLongLong());
           osync_change_set_uid ( change, item.remoteId().toLatin1().data() );
           osync_change_set_hash ( change, getHash( item.id(), item.revision() ).toLatin1().data() );
-
+	  //TODO: Test
 	}
         break;
     }
@@ -471,6 +477,9 @@ void DataSink::commit ( OSyncChange *change )
             error( OSYNC_ERROR_GENERIC, "Unable to modify item.");
             return;
 	  }
+// ### Do Ineed this also here?
+//	  kDebug() << "change  qint:" << remoteId.toLongLong();
+// 	  item.setId((qint64) remoteId.toLongLong());
           osync_change_set_uid ( change, item.remoteId().toLatin1().data() );
           osync_change_set_hash ( change, getHash( item.id(), item.revision() ).toLatin1().data() );
 
@@ -533,7 +542,7 @@ bool DataSink::setPayload ( Item *item, const QString &str )
     }
     case Calendars:
     {
-        kDebug() << "events";
+        kDebug() << "type = events";
         KCal::ICalFormat format;
         KCal::Incidence *calEntry = format.fromString ( str.toUtf8() );
         item->setPayload<IncidencePtr> ( IncidencePtr ( calEntry->clone() ) );
@@ -542,7 +551,7 @@ bool DataSink::setPayload ( Item *item, const QString &str )
     }
     case Todos:
     {
-        kDebug() << "todos";
+        kDebug() << "type = todos";
         KCal::ICalFormat format;
         KCal::Incidence *todoEntry = format.fromString ( str.toUtf8() );
         item->setPayload<IncidencePtr> ( IncidencePtr ( todoEntry->clone() ) );
@@ -551,7 +560,7 @@ bool DataSink::setPayload ( Item *item, const QString &str )
     }
     case Notes:
     {
-        kDebug() << "notes";
+        kDebug() << "type = notes";
         KCal::ICalFormat format;
         KCal::Incidence *noteEntry = format.fromString ( str.toUtf8() );
         item->setPayload<IncidencePtr> ( IncidencePtr ( noteEntry->clone() ) );
