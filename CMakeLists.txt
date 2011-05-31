@@ -27,30 +27,18 @@ FIND_PACKAGE( OpenSync REQUIRED )
 FIND_PACKAGE( Automoc4 REQUIRED )
 
 INCLUDE( CheckIncludeFile )
-
 INCLUDE( Documentation )
 INCLUDE( OpenSyncDefaults )
-INCLUDE ( OpenSyncPlugin )
+INCLUDE( OpenSyncPlugin )
 INCLUDE( OpenSyncInternal )
 INCLUDE( OpenSyncPackaging )
-# INCLUDE( Testing )
 
 
 
-# include_directories( ${KDE4_INCLUDES} "/opt/testing/opensync/include" )
-
-# include_directories( ${KDE4_INCLUDES} ${KDE4_INCLUDE_DIR} ${KDEPIMLIBS_INCLUDE_DIR} ${OPENSYNC_INCLUDE_DIR} "/opt/testing/opensync/include" )
 include_directories( ${KDE4_INCLUDES} ${KDE4_INCLUDE_DIR} ${KDEPIMLIBS_INCLUDE_DIR} ${OPENSYNC_INCLUDE_DIR} ${OPENSYNC_INCLUDE_DIR}/helper ${OPENSYNC_INCLUDE_DIR}/plugin )
-
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/src )
-
-# include_directories(  )
-
-# link_directories( ${KDE4_LIB_DIR} ${KDEPIMLIBS_LIB_DIR} ${OPENSYNC_LIBRARIES_DIR} "/opt/testing/opensync/lib" )
 link_directories( ${KDE4_LIB_DIR} ${KDEPIMLIBS_LIB_DIR} ${OPENSYNC_LIBRARIES_DIR} )
 
-
 ADD_SUBDIRECTORY( src )
-
 
 OPENSYNC_PACKAGE( ${PROJECT_NAME} ${VERSION} )
