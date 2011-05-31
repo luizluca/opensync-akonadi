@@ -11,12 +11,6 @@ PROJECT( top-level C CXX )
 SET( VERSION "0.40" )
 SET ( PROJECT_NAME akonadi_opensync_plugin )
 
-# SET ( CMAKE_INSTALL_PREFIX "/opt/testing/opensync" )
-
-SET( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules" )
-# SET ( OpenSync_DIR "/opt/testing/opensync" )
-#SET (PKG_CONFIG_PATH "/opt/testing/opensync/lib/pkgconfig" )
-SET (PKG_CONFIG_PATH ${PKG_CONFIG_PATH} $ENV{PKG_CONFIG_PATH} )
 SET( CMAKE_CXX_FLAGS  ${CMAKE_CXX_FLAGS} ${KDE4_ENABLE_EXCEPTIONS} )
 # SET( CMAKE_CXX_FLAGS_DEBUG "-DDEBUG -ggdb -g -O2 -Wall -W " ${CMAKE_CXX_FLAGS_DEBUG} ${KDE4_ENABLE_EXCEPTIONS} )
 
