@@ -107,7 +107,7 @@ extern "C"
                 delete ds;
 //                 objects_supported--;
 		continue;
-            } 
+            }
 //             osync_objtype_sink_set_enabled(sink, true);
 // 	    mainSink->addSink(ds);
 	    sinkList.append(ds);
@@ -288,7 +288,7 @@ extern "C"
                     osync_objtype_sink_set_available(sink, true);
             }
             else if ( ! strcmp(myType,"note") ) {
-                if ( ! testSupport(sink, config, "application/x-vnd.akonadi.calendar.journal", error) 
+                if ( ! testSupport(sink, config, "application/x-vnd.akonadi.calendar.journal", error)
 		  && ! testSupport(sink, config, "application/x-vnd.kde.notes", error) )
                     osync_objtype_sink_set_available(sink, false);
                 else
@@ -346,12 +346,12 @@ extern "C"
         osync_plugin_set_name(plugin, "akonadi-sync");
         osync_plugin_set_longname(plugin, "Akonadi OpenSync Plugin");
         osync_plugin_set_description(plugin, "Plugin to synchronize with Akonadi");
-	
+
         osync_plugin_set_config_type(plugin, OSYNC_PLUGIN_OPTIONAL_CONFIGURATION);
-        osync_plugin_set_initialize(plugin, akonadi_initialize);
-        osync_plugin_set_finalize(plugin, akonadi_finalize);
+        osync_plugin_set_initialize_func(plugin, akonadi_initialize);
+        osync_plugin_set_finalize_func(plugin, akonadi_finalize);
         osync_plugin_set_finalize_timeout(plugin, 5);
-        osync_plugin_set_discover(plugin, akonadi_discover);
+        osync_plugin_set_discover_func(plugin, akonadi_discover);
         osync_plugin_set_discover_timeout(plugin, 5);
         osync_plugin_set_start_type(plugin, OSYNC_START_TYPE_PROCESS);
 
