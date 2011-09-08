@@ -249,9 +249,9 @@ extern "C"
         return configured;
     }
 
-    static osync_bool akonadi_discover(OSyncPluginInfo *info, void *userdata, OSyncError **error )
+    static osync_bool akonadi_discover(OSyncPlugin *plugin, OSyncPluginInfo *info, void *userdata, OSyncError **error )
     {
-        osync_trace(TRACE_ENTRY, " %s(%p, %p, %p)", __func__, userdata, info, error);
+        osync_trace(TRACE_ENTRY, " %s(%p, %p, %p, %p)", __func__, plugin, userdata, info, error);
         kDebug();
 
         OSyncPluginConfig *config = osync_plugin_info_get_config(info);
@@ -319,9 +319,9 @@ extern "C"
         return true;
     }
 
-    static void akonadi_finalize(void *userdata)
+    static void akonadi_finalize(OSyncPlugin *plugin, void *userdata)
     {
-        osync_trace(TRACE_ENTRY, "%s(%p)", __func__, userdata);
+        osync_trace(TRACE_ENTRY, "%s(%p, %p)", __func__, plugin, userdata);
         kDebug();
         AkonadiSink *mainSink = reinterpret_cast<AkonadiSink*>( userdata );
         mainSink->disconnect();
